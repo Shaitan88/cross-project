@@ -13,7 +13,13 @@ struct WebAppState {
     SdlPlatform platform;
     Application application;
 
-    WebAppState() : game(), platform(false), application(game, platform) {}
+    WebAppState() : game(), platform(false), application(game, platform, menuOptions()) {}
+
+    static AppOptions menuOptions() {
+        AppOptions options;
+        options.showMenu = true;
+        return options;
+    }
 };
 
 void frame(void* arg) {
