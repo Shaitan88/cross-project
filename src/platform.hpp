@@ -23,6 +23,7 @@ struct InputFrame {
     bool shootPressed = false;
     bool restartPressed = false;
     bool pausePressed = false;
+    bool startPressed = false;
     bool quitRequested = false;
 };
 

@@ -159,6 +159,24 @@ void drawPauseOverlay(Renderer& renderer, const GameState& state) {
         scale, {255, 246, 204});
 }
 
+void drawMenuOverlay(Renderer& renderer, const GameState& state) {
+    const int width = static_cast<int>(state.width);
+    const int height = static_cast<int>(state.height);
+    renderer.setBlend(true);
+    renderer.fillRect(0, 0, width, height, {4, 8, 12, 190});
+    renderer.setBlend(false);
+    const int panelWidth = 420;
+    const int panelHeight = 150;
+    const int left = (width - panelWidth) / 2;
+    const int top = (height - panelHeight) / 2;
+    renderer.fillRect(left, top, panelWidth, panelHeight, {18, 22, 20});
+    renderer.fillRect(left, top, panelWidth, 4, {226, 194, 92});
+    renderer.fillRect(left, top + panelHeight - 4, panelWidth, 4, {226, 194, 92});
+    renderer.fillRect(left, top, 4, panelHeight, {226, 194, 92});
+    renderer.fillRect(left + panelWidth - 4, top, 4, panelHeight, {226, 194, 92});
+    renderer.fillRect(left + 80, top + 82, panelWidth - 160, 36, {46, 142, 68});
+}
+
 void renderFrame(Renderer& renderer, const GameState& state) {
     renderer.setBlend(false);
     renderer.fillRect(0, 0, static_cast<int>(state.width), static_cast<int>(state.height),

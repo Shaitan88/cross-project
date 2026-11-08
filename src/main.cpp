@@ -18,6 +18,7 @@ int main(int argc, char** argv) {
         Game game;
         AppOptions options;
         options.deterministic = smoke;
+        options.showMenu = !smoke;
         options.stopAfterFrames = smoke ? 120 : 0;
         Application application(game, platform, options);
         const AppResult result = application.run();

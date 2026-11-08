@@ -22,7 +22,7 @@ std::string buildTitle(const GameState& state, bool paused) {
 } // namespace
 
 Application::Application(Game& game, Platform& platform, AppOptions options)
-    : game_(game), platform_(platform), options_(options) {}
+    : game_(game), platform_(platform), options_(options), menu_(options.showMenu) {}
 
 AppResult Application::run() {
     while (step()) {
@@ -50,6 +50,19 @@ bool Application::step() {
         game_.restart();
         accumulator_ = 0;
         previous_ = platform_.nowSeconds();
+    }
+    if (menu_) {
+        const GameState state = game_.snapshot();
+        if (input.startPressed) menu_ = false;
+        result_.title = menu_ ? "Castle Escape | MENU | Enter/Space: start | Esc: quit"
+                              : buildTitle(state, false);
+        platform_.setTitle(result_.title);
+        renderFrame(platform_.renderer(), state);
+        if (menu_) drawMenuOverlay(platform_.renderer(), state);
+        platform_.renderer().present();
+        ++result_.frames;
+        if (options_.stopAfterFrames > 0 && result_.frames >= options_.stopAfterFrames) running_ = false;
+        return running_;
     }
     if (input.pausePressed) paused_ = !paused_;
     if (paused_) {

@@ -154,6 +154,33 @@ void pauseFreezesLogicAndRendersOverlay() {
     std::cout << "PASS: pause freezes logic, draws overlay and resumes on P\n";
 }
 
+void menuWaitsForStart() {
+    FakeRenderer renderer;
+    std::deque<InputFrame> frames;
+    frames.push_back(InputFrame{});
+    InputFrame start;
+    start.startPressed = true;
+    frames.push_back(start);
+    InputFrame move;
+    move.horizontal = 1;
+    frames.push_back(move);
+    InputFrame quit;
+    quit.quitRequested = true;
+    frames.push_back(quit);
+
+    FakePlatform platform(std::move(frames), renderer);
+    Game game;
+    AppOptions options;
+    options.deterministic = true;
+    options.showMenu = true;
+    Application application(game, platform, options);
+    const AppResult result = application.run();
+    require(result.final.x == result.initial.x + 2.0, "Menu advanced gameplay before start");
+    require(platform.title().find("MENU") == std::string::npos, "Menu remained after start");
+    require(renderer.presentCount == 3, "Menu sequence did not render each frame");
+    std::cout << "PASS: start menu blocks gameplay until Enter/Space\n";
+}
+
 void cyrillicOverlayCoverage() {
     require(pixelTextWidth(U"ПОБЕДА", 7) == 245, "Victory text width is wrong");
     require(pixelTextWidth(U"ПОРАЖЕНИЕ", 6) == 318, "Defeat text width is wrong");
@@ -183,6 +210,7 @@ int main() {
         actionFramesRestartAndQuit();
         fixedStepMovementRendersEveryFrame();
         pauseFreezesLogicAndRendersOverlay();
+        menuWaitsForStart();
         cyrillicOverlayCoverage();
         return 0;
     } catch (const std::exception& error) {

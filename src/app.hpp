@@ -10,6 +10,7 @@ struct AppOptions {
     double fixedStep = 1.0 / 60.0;
     double maxFrameSeconds = 0.25;
     bool deterministic = false;
+    bool showMenu = false;
     int stopAfterFrames = 0;
 };
 
@@ -33,6 +34,7 @@ private:
     bool initialized_ = false;
     bool running_ = true;
     bool paused_ = false;
+    bool menu_ = false;
     double accumulator_ = 0;
     double previous_ = 0;
     AppResult result_{};
