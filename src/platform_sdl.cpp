@@ -10,6 +10,7 @@
 #include <cmath>
 #include <cstdint>
 #include <stdexcept>
+#include <vector>
 
 namespace {
 void check(int result) {
@@ -22,7 +23,7 @@ SdlPlatform::SdlPlatform(bool smoke) : smoke_(smoke) {
 #if defined(__EMSCRIPTEN__)
     SDL_SetHint(SDL_HINT_EMSCRIPTEN_KEYBOARD_ELEMENT, "#canvas");
 #endif
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0) {
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_AUDIO) != 0) {
         throw std::runtime_error(SDL_GetError());
     }
     try {
@@ -34,6 +35,14 @@ SdlPlatform::SdlPlatform(bool smoke) : smoke_(smoke) {
         if (!renderer_) renderer_ = SDL_CreateRenderer(window_, -1, SDL_RENDERER_SOFTWARE);
         if (!renderer_) throw std::runtime_error(SDL_GetError());
         check(SDL_RenderSetLogicalSize(renderer_, 640, 400));
+        SDL_AudioSpec desired{};
+        desired.freq = 22050;
+        desired.format = AUDIO_S16SYS;
+        desired.channels = 1;
+        desired.samples = 512;
+        SDL_AudioSpec obtained{};
+        audioDevice_ = SDL_OpenAudioDevice(nullptr, 0, &desired, &obtained, 0);
+        if (audioDevice_ != 0) SDL_PauseAudioDevice(audioDevice_, 0);
     } catch (...) {
         if (renderer_) SDL_DestroyRenderer(renderer_);
         if (window_) SDL_DestroyWindow(window_);
@@ -44,6 +53,7 @@ SdlPlatform::SdlPlatform(bool smoke) : smoke_(smoke) {
 
 SdlPlatform::~SdlPlatform() {
     if (renderer_) SDL_DestroyRenderer(renderer_);
+    if (audioDevice_ != 0) SDL_CloseAudioDevice(audioDevice_);
     if (window_) SDL_DestroyWindow(window_);
     SDL_Quit();
 }
@@ -107,6 +117,20 @@ void SdlPlatform::setTitle(const std::string& title) {
 #else
     SDL_SetWindowTitle(window_, title.c_str());
 #endif
+}
+
+void SdlPlatform::playTone(int frequencyHz, int durationMs) {
+    if (audioDevice_ == 0 || frequencyHz <= 0 || durationMs <= 0) return;
+    constexpr int sampleRate = 22050;
+    const int sampleCount = sampleRate * durationMs / 1000;
+    std::vector<Sint16> samples(static_cast<std::size_t>(sampleCount));
+    for (int index = 0; index < sampleCount; ++index) {
+        const double phase = static_cast<double>(index) * frequencyHz / sampleRate;
+        const double envelope = 1.0 - static_cast<double>(index) / sampleCount;
+        samples[static_cast<std::size_t>(index)] = static_cast<Sint16>(
+            std::sin(phase * 6.283185307179586) * 5000.0 * envelope);
+    }
+    SDL_QueueAudio(audioDevice_, samples.data(), static_cast<Uint32>(samples.size() * sizeof(Sint16)));
 }
 
 void SdlPlatform::delay(int milliseconds) {

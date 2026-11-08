@@ -16,6 +16,7 @@ public:
     InputFrame pollInput() override;
     double nowSeconds() override;
     void setTitle(const std::string& title) override;
+    void playTone(int frequencyHz, int durationMs) override;
     void delay(int milliseconds) override;
 
     void fillRect(int x, int y, int w, int h, Color color) override;
@@ -28,4 +29,5 @@ private:
     bool firstPoll_ = true;
     SDL_Window* window_ = nullptr;
     SDL_Renderer* renderer_ = nullptr;
+    unsigned int audioDevice_ = 0;
 };

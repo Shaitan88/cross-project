@@ -53,7 +53,10 @@ bool Application::step() {
     }
     if (menu_) {
         const GameState state = game_.snapshot();
-        if (input.startPressed) menu_ = false;
+        if (input.startPressed) {
+            menu_ = false;
+            platform_.playTone(660, 100);
+        }
         result_.title = menu_ ? "Castle Escape | MENU | Enter/Space: start | Esc: quit"
                               : buildTitle(state, false);
         platform_.setTitle(result_.title);
@@ -64,7 +67,10 @@ bool Application::step() {
         if (options_.stopAfterFrames > 0 && result_.frames >= options_.stopAfterFrames) running_ = false;
         return running_;
     }
-    if (input.pausePressed) paused_ = !paused_;
+    if (input.pausePressed) {
+        paused_ = !paused_;
+        platform_.playTone(paused_ ? 330 : 660, 100);
+    }
     if (paused_) {
         const GameState state = game_.snapshot();
         result_.title = buildTitle(state, true);
@@ -76,8 +82,14 @@ bool Application::step() {
         if (options_.stopAfterFrames > 0 && result_.frames >= options_.stopAfterFrames) running_ = false;
         return running_;
     }
-    if (input.interactPressed) game_.interact();
-    if (input.shootPressed) game_.shoot();
+    if (input.interactPressed) {
+        game_.interact();
+        platform_.playTone(520, 70);
+    }
+    if (input.shootPressed) {
+        game_.shoot();
+        platform_.playTone(180, 90);
+    }
 
     if (options_.deterministic) {
         accumulator_ += options_.fixedStep;

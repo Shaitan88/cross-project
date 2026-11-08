@@ -49,10 +49,12 @@ public:
     }
 
     void setTitle(const std::string& title) override { title_ = title; }
+    void playTone(int, int) override { ++toneCount; }
     void delay(int) override { ++delayCount; }
 
     const std::string& title() const { return title_; }
     int delayCount = 0;
+    int toneCount = 0;
 
 private:
     std::deque<InputFrame> frames_;
@@ -92,6 +94,7 @@ void actionFramesRestartAndQuit() {
     require(renderer.presentCount == 3, "Each frame was not presented exactly once");
     require(platform.title().find("Ammo 6 | Quiet") != std::string::npos,
         "Restarted title lacks ammo and quiet state");
+    require(platform.toneCount == 2, "Action sounds were not emitted");
     std::cout << "PASS: input edges dispatch actions, restart resets state and loop frames render\n";
 }
 
@@ -151,6 +154,7 @@ void pauseFreezesLogicAndRendersOverlay() {
     require(platform.title().find("PAUSED") == std::string::npos,
         "Resume left application paused");
     require(renderer.presentCount == 4, "Pause sequence did not render each frame");
+    require(platform.toneCount == 2, "Pause and resume sounds were not emitted");
     std::cout << "PASS: pause freezes logic, draws overlay and resumes on P\n";
 }
 

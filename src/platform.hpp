@@ -34,5 +34,6 @@ public:
     virtual InputFrame pollInput() = 0;
     virtual double nowSeconds() = 0;
     virtual void setTitle(const std::string& title) = 0;
+    virtual void playTone(int frequencyHz, int durationMs) = 0;
     virtual void delay(int milliseconds) = 0;
 };
