@@ -1,0 +1,38 @@
+name: Windows x86 build
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-windows-x86:
+    name: Build and test under Wine
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out sources
+        uses: actions/checkout@v4
+
+      - name: Install MinGW-w64, Wine and build tools
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            g++-mingw-w64-i686 \
+            gcc-mingw-w64-i686 \
+            cmake \
+            curl \
+            make \
+            wine \
+            wine32:i386
+
+      - name: Build and run tests under Wine
+        run: ./scripts/build_windows_x86.sh
+
+      - name: Upload the Windows executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: castle_escape-windows-x86
+          path: dist/windows-x86/castle_escape.exe
+          if-no-files-found: error

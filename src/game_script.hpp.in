@@ -1,0 +1,2 @@
+#pragma once
+inline constexpr const char* game_script = R"CASTLE_LUA(@GAME_SCRIPT@)CASTLE_LUA";
