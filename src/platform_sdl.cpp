@@ -74,6 +74,7 @@ InputFrame SdlPlatform::pollInput() {
                 if (event.key.keysym.sym == SDLK_e) input.interactPressed = true;
                 if (event.key.keysym.sym == SDLK_SPACE) input.shootPressed = true;
                 if (event.key.keysym.sym == SDLK_r) input.restartPressed = true;
+                if (event.key.keysym.sym == SDLK_p) input.pausePressed = true;
             }
         }
     }

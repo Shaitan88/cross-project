@@ -123,6 +123,37 @@ void fixedStepMovementRendersEveryFrame() {
     std::cout << "PASS: deterministic fixed-step loop advances the player and renders each frame\n";
 }
 
+void pauseFreezesLogicAndRendersOverlay() {
+    FakeRenderer renderer;
+    std::deque<InputFrame> frames;
+    InputFrame pause;
+    pause.pausePressed = true;
+    frames.push_back(pause);
+    InputFrame move;
+    move.horizontal = 1;
+    frames.push_back(move);
+    InputFrame resume;
+    resume.pausePressed = true;
+    frames.push_back(resume);
+    frames.push_back(move);
+    InputFrame quit;
+    quit.quitRequested = true;
+    frames.push_back(quit);
+
+    FakePlatform platform(std::move(frames), renderer);
+    Game game;
+    AppOptions options;
+    options.deterministic = true;
+    Application application(game, platform, options);
+    const AppResult result = application.run();
+    require(result.final.x == result.initial.x + 2.0,
+        "Paused frame advanced game logic");
+    require(platform.title().find("PAUSED") == std::string::npos,
+        "Resume left application paused");
+    require(renderer.presentCount == 4, "Pause sequence did not render each frame");
+    std::cout << "PASS: pause freezes logic, draws overlay and resumes on P\n";
+}
+
 void cyrillicOverlayCoverage() {
     require(pixelTextWidth(U"ПОБЕДА", 7) == 245, "Victory text width is wrong");
     require(pixelTextWidth(U"ПОРАЖЕНИЕ", 6) == 318, "Defeat text width is wrong");
@@ -151,6 +182,7 @@ int main() {
     try {
         actionFramesRestartAndQuit();
         fixedStepMovementRendersEveryFrame();
+        pauseFreezesLogicAndRendersOverlay();
         cyrillicOverlayCoverage();
         return 0;
     } catch (const std::exception& error) {

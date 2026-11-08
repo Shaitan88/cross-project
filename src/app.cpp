@@ -7,7 +7,7 @@
 #include <string>
 
 namespace {
-std::string buildTitle(const GameState& state) {
+std::string buildTitle(const GameState& state, bool paused) {
     std::string objective;
     if (state.won) objective = "VICTORY | R: restart";
     else if (state.lost) objective = "CAPTURED | R: restart";
@@ -16,8 +16,8 @@ std::string buildTitle(const GameState& state) {
 
     return "Castle Escape | Room " + std::to_string(state.room)
         + " | Ammo " + std::to_string(state.ammo) + " | " + (state.alarm ? "ALARM" : "Quiet")
-        + " | " + objective
-        + " | WASD / Arrows: move | E: door | Space: shoot | R: restart | Esc: quit";
+        + " | " + (paused ? "PAUSED" : objective)
+        + " | WASD / Arrows: move | E: door | Space: shoot | P: pause | R: restart | Esc: quit";
 }
 } // namespace
 
@@ -51,6 +51,18 @@ bool Application::step() {
         accumulator_ = 0;
         previous_ = platform_.nowSeconds();
     }
+    if (input.pausePressed) paused_ = !paused_;
+    if (paused_) {
+        const GameState state = game_.snapshot();
+        result_.title = buildTitle(state, true);
+        platform_.setTitle(result_.title);
+        renderFrame(platform_.renderer(), state);
+        drawPauseOverlay(platform_.renderer(), state);
+        platform_.renderer().present();
+        ++result_.frames;
+        if (options_.stopAfterFrames > 0 && result_.frames >= options_.stopAfterFrames) running_ = false;
+        return running_;
+    }
     if (input.interactPressed) game_.interact();
     if (input.shootPressed) game_.shoot();
 
@@ -69,7 +81,7 @@ bool Application::step() {
     }
 
     const GameState state = game_.snapshot();
-    result_.title = buildTitle(state);
+    result_.title = buildTitle(state, false);
     platform_.setTitle(result_.title);
     renderFrame(platform_.renderer(), state);
     platform_.renderer().present();

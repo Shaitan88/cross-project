@@ -18,6 +18,8 @@ const Glyph* glyphFor(char32_t character) {
     static const Glyph zh{{"#.#.#", "#.#.#", "#.#.#", "#####", "#.#.#", "#.#.#", "#.#.#"}};
     static const Glyph n{{"#...#", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"}};
     static const Glyph i{{"#...#", "#...#", "#..##", "#.#.#", "##..#", "#...#", "#...#"}};
+    static const Glyph u{{"#...#", "#...#", "#...#", "#...#", "#...#", ".#.#.", "..#.."}};
+    static const Glyph z{{"#####", "....#", "...#.", "..#..", ".#...", "#....", "#####"}};
 
     switch (character) {
     case U'П': return &p;
@@ -30,6 +32,8 @@ const Glyph* glyphFor(char32_t character) {
     case U'Ж': return &zh;
     case U'Н': return &n;
     case U'И': return &i;
+    case U'У': return &u;
+    case U'З': return &z;
     default: return nullptr;
     }
 }
@@ -140,6 +144,19 @@ void drawResultOverlay(Renderer& renderer, const GameState& state) {
     drawPixelText(renderer, text, left + 4, top + 4, scale, {10, 10, 10});
     drawPixelText(renderer, text, left, top, scale,
         victory ? Color{255, 246, 204} : Color{255, 222, 196});
+}
+
+void drawPauseOverlay(Renderer& renderer, const GameState& state) {
+    const int width = static_cast<int>(state.width);
+    const int height = static_cast<int>(state.height);
+    renderer.setBlend(true);
+    renderer.fillRect(0, 0, width, height, {4, 8, 12, 150});
+    renderer.setBlend(false);
+    const std::u32string_view text = U"ПАУЗА";
+    const int scale = 8;
+    const int textWidth = pixelTextWidth(text, scale);
+    drawPixelText(renderer, text, (width - textWidth) / 2, (height - 7 * scale) / 2,
+        scale, {255, 246, 204});
 }
 
 void renderFrame(Renderer& renderer, const GameState& state) {

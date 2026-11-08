@@ -32,6 +32,7 @@ private:
     AppOptions options_;
     bool initialized_ = false;
     bool running_ = true;
+    bool paused_ = false;
     double accumulator_ = 0;
     double previous_ = 0;
     AppResult result_{};
