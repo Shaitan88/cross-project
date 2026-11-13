@@ -3,6 +3,7 @@ local player = { x = 64, y = 200, size = 16, speed = 120, ammo = 6, aim_x = 1, a
 local alarm = false
 local current_room, door_open = 1, false
 local has_key, won, lost = false, false, false
+local spawn_grace = 0
 local flash = 0
 local bullet = { active = false, x = 0, y = 0, dx = 0, dy = 0, remaining = 0 }
 local rooms = {
@@ -15,12 +16,12 @@ local rooms = {
       obstacle = { x = 0, y = 0, width = 0, height = 0 } },
     { guard = { x = 500, y = 280, phase = 160, direction = -1, detected = false, health = 2 },
       obstacle = { x = 0, y = 0, width = 0, height = 0 },
-      key = { x = 552, y = 96, width = 16, height = 16 } },
+      key = { x = 552, y = 192, width = 16, height = 16 } },
     { guard = { x = 400, y = 80, phase = 120, direction = 1, detected = false, health = 2 },
       obstacle = { x = 0, y = 0, width = 0, height = 0 } },
     { guard = { x = 480, y = 200, phase = 40, direction = -1, detected = false, health = 2 },
       obstacle = { x = 0, y = 0, width = 0, height = 0 },
-      key = { x = 552, y = 288, width = 16, height = 16 } }
+      key = { x = 552, y = 192, width = 16, height = 16 } }
 }
 
 local function is_left_room()
@@ -52,7 +53,7 @@ function interact()
                 won = true
             else
                 current_room, player.x = current_room + 2, room.wall
-                has_key, door_open, player.ammo = false, false, 6
+                has_key, door_open, player.ammo, spawn_grace = false, false, 6, 1.5
             end
         end
         return
@@ -89,9 +90,9 @@ local function move(horizontal, vertical, dt)
     player.y = y
     if dt > 0 and door_open and in_doorway() then
         if is_left_room() and horizontal > 0 and player.x == room.width - room.wall - player.size then
-            current_room, player.x = current_room + 1, room.wall
+            current_room, player.x, spawn_grace = current_room + 1, room.wall, 1.5
         elseif not is_left_room() and horizontal < 0 and player.x == room.wall then
-            current_room, player.x = current_room - 1, room.width - room.wall - player.size
+            current_room, player.x, spawn_grace = current_room - 1, room.width - room.wall - player.size, 1.5
         end
     end
 end
@@ -167,7 +168,7 @@ local function update_guards(dt)
         guard.direction = guard.phase < 120 and 1 or -1
         guard.x = 400 + (guard.phase < 120 and guard.phase or 240 - guard.phase)
         local dx, dy = player.x - guard.x, player.y - guard.y
-        guard.detected = index == current_room and dx * guard.direction >= 0
+        guard.detected = spawn_grace <= 0 and index == current_room and dx * guard.direction >= 0
             and dx * dx + dy * dy <= 300 * 300 and math.abs(dy) <= math.abs(dx)
             and not occluded(guard.x + 8, guard.y + 8, player.x + 8, player.y + 8, data.obstacle)
         if guard.detected then alarm = true end
@@ -192,6 +193,7 @@ end
 
 function update(dt, horizontal, vertical)
     update_effects(dt)
+    spawn_grace = math.max(0, spawn_grace - dt)
     if won or lost then return end
     local length = math.sqrt(horizontal * horizontal + vertical * vertical)
     if length > 1 then
@@ -214,7 +216,7 @@ function restart()
     player.aim_x, player.aim_y = 1, 0
     player.ammo = 6
     alarm = false
-    current_room, door_open = 1, false
+    current_room, door_open, spawn_grace = 1, false, 0
     has_key, won, lost = false, false, false
     flash = 0
     bullet.active = false

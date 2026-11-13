@@ -69,13 +69,9 @@ void keyAndVictory() {
     game.update(1.0, 0, 1);
     game.interact();
     game.update(0.1, 1, 0);
-    game.update(1.2, 0, -1);
     game.update(4.5, 1, 0);
-    game.update(0.33, 0, 1);
     game.interact();
-    game.update(0.33, 0, -1);
     game.update(4.5, -1, 0);
-    game.update(1.2, 0, 1);
     game.update(0.1, -1, 0);
     game.update(1.0, 0, -1);
     game.update(4.5, -1, 0);
@@ -91,10 +87,8 @@ void keyAndVictory() {
     game.update(1.0, 0, -1);
     game.interact();
     game.update(0.1, 1, 0);
-    game.update(0.73, 0, 1);
     game.update(4.5, 1, 0);
     game.interact();
-    game.update(0.73, 0, -1);
     game.update(4.5, -1, 0);
     game.update(1.0, 0, 1);
     game.update(4.5, -1, 0);
