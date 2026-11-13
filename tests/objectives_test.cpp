@@ -10,14 +10,14 @@ void require(bool condition, const char* message) {
 }
 
 void enterSecondRoom(Game& game) {
-    game.update(5, 1, 0);
+    game.update(4.5, 1, 0);
     game.interact();
     game.update(0.1, 1, 0);
 }
 
 void lockedExit() {
     Game game;
-    game.update(5, -1, 0);
+    game.update(4.5, -1, 0);
     const auto atExit = game.snapshot();
     require(atExit.x == 24 && atExit.y == 200, "Failed to reach locked exit");
     game.interact();
@@ -59,10 +59,52 @@ void keyAndVictory() {
     game.update(5, -1, 0);
     require(game.snapshot().x == 24 && game.snapshot().y == 200, "Did not reach the exit");
     game.interact();
+    require(game.snapshot().room == 3 && !game.snapshot().won,
+        "First level exit did not advance to level two");
+
+    // Level two: route above the room-three cover, cross to room four,
+    // collect its key, then return through the door to the level exit.
+    game.update(1.0, 0, -1);
+    game.update(5, 1, 0);
+    game.update(1.0, 0, 1);
+    game.interact();
+    game.update(0.1, 1, 0);
+    game.update(1.2, 0, -1);
+    game.update(4.5, 1, 0);
+    game.update(0.33, 0, 1);
+    game.interact();
+    game.update(0.33, 0, -1);
+    game.update(4.5, -1, 0);
+    game.update(1.2, 0, 1);
+    game.update(0.1, -1, 0);
+    game.update(1.0, 0, -1);
+    game.update(4.5, -1, 0);
+    game.update(1.0, 0, 1);
+    game.update(5, -1, 0);
+    game.interact();
+    require(game.snapshot().room == 5 && !game.snapshot().won,
+        "Second level exit did not advance to level three");
+
+    // Level three: the key is below the central cover.
+    game.update(1.0, 0, 1);
+    game.update(5, 1, 0);
+    game.update(1.0, 0, -1);
+    game.interact();
+    game.update(0.1, 1, 0);
+    game.update(0.73, 0, 1);
+    game.update(4.5, 1, 0);
+    game.interact();
+    game.update(0.73, 0, -1);
+    game.update(4.5, -1, 0);
+    game.update(1.0, 0, 1);
+    game.update(4.5, -1, 0);
+    game.update(1.0, 0, -1);
+    game.update(5, -1, 0);
+    game.interact();
     const auto finished = game.snapshot();
-    require(finished.won, "Key did not unlock victory");
+    require(finished.won, "Final level key did not unlock victory");
     require(!finished.lost, "Victory also marked the player lost");
-    std::cout << "PASS: key pickup unlocks victory at the exit\n";
+    std::cout << "PASS: keys unlock three sequential levels and final victory\n";
 }
 
 void defeatAndRestart() {

@@ -10,8 +10,26 @@ local rooms = {
       obstacle = { x = 0, y = 0, width = 0, height = 0 } },
     { guard = { x = 440, y = 200, phase = 200, direction = -1, detected = false, health = 2 },
       obstacle = { x = 300, y = 120, width = 24, height = 160 },
-      key = { x = 552, y = 192, width = 16, height = 16 } }
+      key = { x = 552, y = 192, width = 16, height = 16 } },
+    { guard = { x = 360, y = 80, phase = 80, direction = 1, detected = false, health = 2 },
+      obstacle = { x = 0, y = 0, width = 0, height = 0 } },
+    { guard = { x = 500, y = 280, phase = 160, direction = -1, detected = false, health = 2 },
+      obstacle = { x = 0, y = 0, width = 0, height = 0 },
+      key = { x = 552, y = 96, width = 16, height = 16 } },
+    { guard = { x = 400, y = 80, phase = 120, direction = 1, detected = false, health = 2 },
+      obstacle = { x = 0, y = 0, width = 0, height = 0 } },
+    { guard = { x = 480, y = 200, phase = 40, direction = -1, detected = false, health = 2 },
+      obstacle = { x = 0, y = 0, width = 0, height = 0 },
+      key = { x = 552, y = 288, width = 16, height = 16 } }
 }
+
+local function is_left_room()
+    return current_room % 2 == 1
+end
+
+local function key_room()
+    return math.min(current_room + (is_left_room() and 1 or 0), #rooms)
+end
 
 local function in_doorway()
     return player.y >= 176 and player.y + player.size <= 240
@@ -19,8 +37,8 @@ end
 
 function interact()
     if won or lost then return end
-    local key = rooms[2].key
-    if current_room == 2 and not has_key
+    local key = rooms[key_room()].key
+    if not is_left_room() and not has_key
         and player.x <= key.x + key.width + 8
         and player.x + player.size >= key.x - 8
         and player.y <= key.y + key.height + 8
@@ -28,11 +46,18 @@ function interact()
         has_key = true
         return
     end
-    if current_room == 1 and in_doorway() and player.x <= room.wall + 32 then
-        if has_key then won = true end
+    if is_left_room() and in_doorway() and player.x <= room.wall + 32 then
+        if has_key then
+            if current_room >= #rooms - 1 then
+                won = true
+            else
+                current_room, player.x = current_room + 2, room.wall
+                has_key, door_open, player.ammo = false, false, 6
+            end
+        end
         return
     end
-    local door_x = current_room == 1 and room.width - room.wall - player.size or room.wall
+    local door_x = is_left_room() and room.width - room.wall - player.size or room.wall
     if in_doorway() and math.abs(player.x - door_x) <= 32 then
         door_open = not door_open
     end
@@ -63,10 +88,10 @@ local function move(horizontal, vertical, dt)
     end
     player.y = y
     if dt > 0 and door_open and in_doorway() then
-        if current_room == 1 and horizontal > 0 and player.x == room.width - room.wall - player.size then
-            current_room, player.x = 2, room.wall
-        elseif current_room == 2 and horizontal < 0 and player.x == room.wall then
-            current_room, player.x = 1, room.width - room.wall - player.size
+        if is_left_room() and horizontal > 0 and player.x == room.width - room.wall - player.size then
+            current_room, player.x = current_room + 1, room.wall
+        elseif not is_left_room() and horizontal < 0 and player.x == room.wall then
+            current_room, player.x = current_room - 1, room.width - room.wall - player.size
         end
     end
 end
@@ -143,7 +168,7 @@ local function update_guards(dt)
         guard.x = 400 + (guard.phase < 120 and guard.phase or 240 - guard.phase)
         local dx, dy = player.x - guard.x, player.y - guard.y
         guard.detected = index == current_room and dx * guard.direction >= 0
-            and dx * dx + dy * dy <= 400 * 400 and math.abs(dy) <= math.abs(dx)
+            and dx * dx + dy * dy <= 300 * 300 and math.abs(dy) <= math.abs(dx)
             and not occluded(guard.x + 8, guard.y + 8, player.x + 8, player.y + 8, data.obstacle)
         if guard.detected then alarm = true end
         end
@@ -198,7 +223,11 @@ function restart()
     bullet.remaining = 0
     local initial = {
         { x = 440, y = 80, phase = 40, direction = 1 },
-        { x = 440, y = 200, phase = 200, direction = -1 }
+        { x = 440, y = 200, phase = 200, direction = -1 },
+        { x = 360, y = 80, phase = 80, direction = 1 },
+        { x = 500, y = 280, phase = 160, direction = -1 },
+        { x = 400, y = 80, phase = 120, direction = 1 },
+        { x = 480, y = 200, phase = 40, direction = -1 }
     }
     for index, data in ipairs(rooms) do
         local guard = data.guard
@@ -211,7 +240,7 @@ end
 function snapshot()
     local data = rooms[current_room]
     local guard, obstacle = data.guard, data.obstacle
-    local key = rooms[2].key
+    local key = rooms[key_room()].key
     return player.x, player.y, player.size, room.width, room.height, room.wall,
         current_room, door_open and 1 or 0, guard.detected and 1 or 0,
         guard.x, guard.y, guard.direction, guard.detected and 1 or 0,

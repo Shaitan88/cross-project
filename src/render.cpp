@@ -239,8 +239,8 @@ void renderFrame(Renderer& renderer, const GameState& state) {
     renderer.fillRect(state.room == 1 ? 616 : 0, 176, 24, 64,
         state.doorOpen ? Color{23, 28, 26} : Color{136, 100, 26});
 
-    // Room-1 left-wall exit is separate from every transition door.
-    if (state.room == 1) drawExit(renderer, state.hasKey);
+    // Every odd-numbered room is a level entrance with its own exit.
+    if (state.room % 2 == 1) drawExit(renderer, state.hasKey);
 
     renderer.fillRect(static_cast<int>(state.obstacle.x), static_cast<int>(state.obstacle.y),
         static_cast<int>(state.obstacle.width), static_cast<int>(state.obstacle.height),
@@ -263,8 +263,8 @@ void renderFrame(Renderer& renderer, const GameState& state) {
         static_cast<int>(state.x + 8 + state.aimX * 24),
         static_cast<int>(state.y + 8 + state.aimY * 24), {221, 194, 113});
 
-    // World key is only present in room 2 and only until it is collected.
-    if (state.room == 2 && !state.hasKey) drawWorldKey(renderer, state.keyX, state.keyY);
+    // The active level's key is present in each even-numbered room.
+    if (state.room % 2 == 0 && !state.hasKey) drawWorldKey(renderer, state.keyX, state.keyY);
 
     const double aimLength = std::hypot(state.aimX, state.aimY);
     const double aimX = aimLength > 1e-9 ? state.aimX / aimLength : 1.0;
