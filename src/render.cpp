@@ -20,6 +20,12 @@ const Glyph* glyphFor(char32_t character) {
     static const Glyph i{{"#...#", "#...#", "#..##", "#.#.#", "##..#", "#...#", "#...#"}};
     static const Glyph u{{"#...#", "#...#", "#...#", "#...#", "#...#", ".#.#.", "..#.."}};
     static const Glyph z{{"#####", "....#", "...#.", "..#..", ".#...", "#....", "#####"}};
+    static const Glyph c{{".####", "#....", "#....", "#....", "#....", "#....", ".####"}};
+    static const Glyph s{{".####", "#....", "#....", ".###.", "....#", "....#", "####."}};
+    static const Glyph t{{"#####", "..#..", "..#..", "..#..", "..#..", "..#..", "..#.."}};
+    static const Glyph l{{"#....", "#....", "#....", "#....", "#....", "#....", "#####"}};
+    static const Glyph g{{".###.", "#...#", "#....", "#.###", "#...#", "#...#", ".###."}};
+    static const Glyph m{{"#...#", "##.##", "#.#.#", "#.#.#", "#...#", "#...#", "#...#"}};
 
     switch (character) {
     case U'П': return &p;
@@ -34,6 +40,23 @@ const Glyph* glyphFor(char32_t character) {
     case U'И': return &i;
     case U'У': return &u;
     case U'З': return &z;
+    case U'C': return &c;
+    case U'S': return &s;
+    case U'T': return &t;
+    case U'L': return &l;
+    case U'G': return &g;
+    case U'M': return &m;
+    case U'P': return &p;
+    case U'O': return &o;
+    case U'B': return &b;
+    case U'E': return &e;
+    case U'D': return &d;
+    case U'A': return &a;
+    case U'R': return &r;
+    case U'N': return &n;
+    case U'I': return &i;
+    case U'U': return &u;
+    case U'Z': return &z;
     default: return nullptr;
     }
 }
@@ -152,11 +175,21 @@ void drawPauseOverlay(Renderer& renderer, const GameState& state) {
     renderer.setBlend(true);
     renderer.fillRect(0, 0, width, height, {4, 8, 12, 150});
     renderer.setBlend(false);
-    const std::u32string_view text = U"ПАУЗА";
-    const int scale = 8;
+    const int panelWidth = 360;
+    const int panelHeight = 120;
+    const int left = (width - panelWidth) / 2;
+    const int top = (height - panelHeight) / 2;
+    renderer.fillRect(left, top, panelWidth, panelHeight, {18, 22, 20});
+    renderer.fillRect(left, top, panelWidth, 4, {226, 194, 92});
+    renderer.fillRect(left, top + panelHeight - 4, panelWidth, 4, {226, 194, 92});
+    const std::u32string_view text = U"PAUSED";
+    const int scale = 6;
     const int textWidth = pixelTextWidth(text, scale);
-    drawPixelText(renderer, text, (width - textWidth) / 2, (height - 7 * scale) / 2,
+    drawPixelText(renderer, text, left + (panelWidth - textWidth) / 2, top + 28,
         scale, {255, 246, 204});
+    const std::u32string_view hint = U"P TO RESUME";
+    drawPixelText(renderer, hint, left + (panelWidth - pixelTextWidth(hint, 2)) / 2,
+        top + 88, 2, {194, 180, 143});
 }
 
 void drawMenuOverlay(Renderer& renderer, const GameState& state) {
@@ -165,8 +198,8 @@ void drawMenuOverlay(Renderer& renderer, const GameState& state) {
     renderer.setBlend(true);
     renderer.fillRect(0, 0, width, height, {4, 8, 12, 190});
     renderer.setBlend(false);
-    const int panelWidth = 420;
-    const int panelHeight = 150;
+    const int panelWidth = 500;
+    const int panelHeight = 230;
     const int left = (width - panelWidth) / 2;
     const int top = (height - panelHeight) / 2;
     renderer.fillRect(left, top, panelWidth, panelHeight, {18, 22, 20});
@@ -174,7 +207,22 @@ void drawMenuOverlay(Renderer& renderer, const GameState& state) {
     renderer.fillRect(left, top + panelHeight - 4, panelWidth, 4, {226, 194, 92});
     renderer.fillRect(left, top, 4, panelHeight, {226, 194, 92});
     renderer.fillRect(left + panelWidth - 4, top, 4, panelHeight, {226, 194, 92});
-    renderer.fillRect(left + 80, top + 82, panelWidth - 160, 36, {46, 142, 68});
+    renderer.fillRect(left + 62, top + 96, panelWidth - 124, 48, {46, 142, 68});
+    renderer.fillRect(left + 62, top + 96, panelWidth - 124, 3, {108, 205, 113});
+    renderer.fillRect(left + 62, top + 141, panelWidth - 124, 3, {22, 86, 42});
+
+    const std::u32string_view title = U"CASTLE ESCAPE";
+    const int titleScale = 5;
+    drawPixelText(renderer, title, left + (panelWidth - pixelTextWidth(title, titleScale)) / 2,
+        top + 24, titleScale, {255, 246, 204});
+    const std::u32string_view action = U"START GAME";
+    const int actionScale = 4;
+    drawPixelText(renderer, action, left + (panelWidth - pixelTextWidth(action, actionScale)) / 2,
+        top + 108, actionScale, {245, 255, 224});
+    const std::u32string_view hint = U"ENTER / SPACE";
+    const int hintScale = 2;
+    drawPixelText(renderer, hint, left + (panelWidth - pixelTextWidth(hint, hintScale)) / 2,
+        top + 172, hintScale, {194, 180, 143});
 }
 
 void renderFrame(Renderer& renderer, const GameState& state) {
