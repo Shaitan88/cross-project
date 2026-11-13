@@ -492,6 +492,122 @@
         transition: none;
       }
     }
+
+    /* Simple web shell: keep the game canvas prominent and the page quiet. */
+    body {
+      background: #f2f2f0;
+      color: #202020;
+    }
+
+    body::before,
+    body::after,
+    .eyebrow,
+    .subtitle {
+      display: none;
+    }
+
+    .page {
+      width: min(100%, 1100px);
+      padding: 1.5rem 1rem 2rem;
+    }
+
+    .masthead {
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid #d3d3cf;
+    }
+
+    h1 {
+      margin: 0;
+      color: #202020;
+      font-size: clamp(1.5rem, 4vw, 2.2rem);
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
+    h1 span {
+      color: #555;
+    }
+
+    .game {
+      display: block;
+    }
+
+    #hud,
+    .briefing {
+      background: #fff;
+      border: 1px solid #d3d3cf;
+      border-radius: 4px;
+      box-shadow: none;
+    }
+
+    #hud {
+      margin-bottom: 0.75rem;
+      padding: 0.65rem 0.8rem;
+      color: #343434;
+      font-size: 0.82rem;
+    }
+
+    #hud::before,
+    #hud::after,
+    .canvas-frame::after,
+    #status::before,
+    #status::after {
+      display: none;
+    }
+
+    .canvas-frame {
+      padding: 0.75rem;
+      background: #151515;
+      border: 1px solid #bdbdb8;
+      border-radius: 4px;
+      box-shadow: none;
+    }
+
+    #canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      max-height: 72vh;
+      border: 0;
+      border-radius: 0;
+    }
+
+    .canvas-hint {
+      margin: 0.65rem 0 1rem;
+      color: #666;
+      font-size: 0.82rem;
+    }
+
+    .briefing {
+      padding: 1rem;
+    }
+
+    .briefing h2 {
+      margin: 0 0 0.75rem;
+      color: #202020;
+      font-size: 1rem;
+    }
+
+    .controls {
+      gap: 0.45rem 1rem;
+    }
+
+    .control-label,
+    .build-note {
+      color: #4f4f4f;
+    }
+
+    kbd {
+      background: #f0f0ed;
+      border: 1px solid #c8c8c2;
+      color: #202020;
+      box-shadow: none;
+    }
+
+    code {
+      color: #333;
+    }
   </style>
 </head>
 <body>
@@ -499,7 +615,7 @@
     <header class="masthead">
       <p class="eyebrow">Терминал замка // канал управления</p>
       <h1>Castle <span>Escape</span></h1>
-      <p class="subtitle">Две комнаты, патрули и запертый выход. Найди ключ во второй комнате, вернись к левой двери и выберись наружу.</p>
+      <p class="subtitle">Три уровня, патрули и запертые выходы. Найдите ключ, вернитесь к двери и пройдите игру.</p>
     </header>
 
     <main class="game" aria-label="Игра Castle Escape">
