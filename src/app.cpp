@@ -14,7 +14,8 @@ std::string buildTitle(const GameState& state, bool paused) {
     else if (state.hasKey) objective = "Key: yes | Exit unlocked";
     else objective = "Key: no | Find the key";
 
-    return "Castle Escape | Room " + std::to_string(state.room)
+    const int level = (state.room + 1) / 2;
+    return "Castle Escape | Level " + std::to_string(level)
         + " | Ammo " + std::to_string(state.ammo) + " | " + (state.alarm ? "ALARM" : "Quiet")
         + " | " + (paused ? "PAUSED" : objective)
         + " | WASD / Arrows: move | E: door | Space: shoot | P: pause | R: restart | Esc: quit";
