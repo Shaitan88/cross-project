@@ -185,9 +185,9 @@ void menuWaitsForStart() {
     std::cout << "PASS: start menu blocks gameplay until Enter/Space\n";
 }
 
-void cyrillicOverlayCoverage() {
-    require(pixelTextWidth(U"ПОБЕДА", 7) == 245, "Victory text width is wrong");
-    require(pixelTextWidth(U"ПОРАЖЕНИЕ", 6) == 318, "Defeat text width is wrong");
+void englishResultOverlayCoverage() {
+    require(pixelTextWidth(U"VICTORY", 6) == 246, "Victory text width is wrong");
+    require(pixelTextWidth(U"CAPTURED", 6) == 282, "Defeat text width is wrong");
 
     FakeRenderer renderer;
     GameState won{};
@@ -205,7 +205,7 @@ void cyrillicOverlayCoverage() {
     drawResultOverlay(renderer, lost);
     require(renderer.fillCount - victoryFills > 100,
         "Defeat overlay did not draw a substantial panel and glyphs");
-    std::cout << "PASS: Russian victory and defeat text render from internal glyphs\n";
+    std::cout << "PASS: English victory and defeat text render from internal glyphs\n";
 }
 } // namespace
 
@@ -215,7 +215,7 @@ int main() {
         fixedStepMovementRendersEveryFrame();
         pauseFreezesLogicAndRendersOverlay();
         menuWaitsForStart();
-        cyrillicOverlayCoverage();
+        englishResultOverlayCoverage();
         return 0;
     } catch (const std::exception& error) {
         std::cerr << "FAIL: " << error.what() << '\n';

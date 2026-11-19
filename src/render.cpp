@@ -158,8 +158,10 @@ void drawResultOverlay(Renderer& renderer, const GameState& state) {
         panelHeight, border);
 
     renderer.setBlend(false);
-    const std::u32string_view text = victory ? U"ПОБЕДА" : U"ПОРАЖЕНИЕ";
-    const int scale = victory ? 7 : 6;
+    // Keep result labels within the current built-in glyph set. Font expansion
+    // is handled separately; these words render completely with existing glyphs.
+    const std::u32string_view text = victory ? U"VICTORY" : U"CAPTURED";
+    const int scale = 6;
     const int textWidth = pixelTextWidth(text, scale);
     const int textHeight = 7 * scale;
     const int left = panelLeft + (panelWidth - textWidth) / 2;
