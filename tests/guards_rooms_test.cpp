@@ -29,6 +29,7 @@ void doorsAndRooms() {
     game.update(0.1, 1, 0);
     state = game.snapshot();
     require(state.room == 2 && state.x == 24 && state.y == 200, "Open door did not enter room two");
+    require(state.door.x == 0 && state.doorOnLeft, "Even room doorway geometry is incorrect");
     game.interact();
     game.update(0.1, -1, 0);
     require(game.snapshot().room == 2 && !game.snapshot().doorOpen, "Closed return door did not block exit");

@@ -1,5 +1,9 @@
 #pragma once
 
+#include <string>
+
+#include <string>
+
 struct lua_State;
 
 struct GuardState {
@@ -34,6 +38,14 @@ struct GameState {
     double bulletDY;
     double keyX;
     double keyY;
+    int level;
+    int levelCount;
+    RectState door;
+    bool doorOnLeft;
+    RectState exit;
+    bool exitOnLeft;
+    std::string objective;
+    bool interactSucceeded;
 };
 
 class Game {

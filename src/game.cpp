@@ -43,7 +43,8 @@ void Game::update(double dt, int horizontal, int vertical) {
 
 void Game::interact() {
     lua_getglobal(lua_, "interact");
-    call(0, 0);
+    call(0, 1);
+    lua_pop(lua_, 1);
 }
 
 void Game::shoot() {
@@ -58,13 +59,22 @@ void Game::restart() {
 
 GameState Game::snapshot() {
     lua_getglobal(lua_, "snapshot");
-    constexpr int count = 34;
+    constexpr int count = 48;
     call(0, count);
-    double values[count];
+    double values[count]{};
+    std::string objective;
     for (int i = 0; i < count; ++i) {
+        if (i == 46) {
+            if (!lua_isstring(lua_, i - count)) {
+                lua_pop(lua_, count);
+                throw std::runtime_error("Lua objective must be a string");
+            }
+            objective = lua_tostring(lua_, i - count);
+            continue;
+        }
         if (!lua_isnumber(lua_, i - count)) {
             lua_pop(lua_, count);
-            throw std::runtime_error("Lua snapshot must contain thirty-four numbers");
+            throw std::runtime_error("Lua snapshot contains an invalid value");
         }
         values[i] = lua_tonumber(lua_, i - count);
     }
@@ -77,5 +87,8 @@ GameState Game::snapshot() {
         static_cast<int>(values[19]), values[20] != 0, values[21], values[22],
         values[23] != 0, values[24] != 0, values[25] != 0, values[26],
         values[27] != 0, values[28], values[29], values[30], values[31],
-        values[32], values[33]};
+        values[32], values[33], static_cast<int>(values[34]), static_cast<int>(values[35]),
+        {values[36], values[37], values[38], values[39]}, values[40] != 0,
+        {values[41], values[42], values[43], values[44]}, values[45] != 0,
+        std::move(objective), values[47] != 0};
 }

@@ -33,11 +33,39 @@ local function key_room()
 end
 
 local function in_doorway()
-    return player.y >= 176 and player.y + player.size <= 240
+    local rect = door_rect()
+    return player.y < rect.y + rect.height and player.y + player.size > rect.y
 end
 
+local function doorway(side)
+    return { x = side == "left" and 0 or room.width - room.wall,
+        y = 176, width = room.wall, height = 64, side = side }
+end
+
+function door_rect()
+    return doorway(is_left_room() and "right" or "left")
+end
+
+function exit_rect()
+    if not is_left_room() then return { x = 0, y = 0, width = 0, height = 0, side = "left" } end
+    return doorway("left")
+end
+
+local function objective()
+    if won then return "Castle complete!" end
+    if lost then return "Captured. Restart to retry." end
+    if is_left_room() then
+        if has_key then return "Return to exit and press E." end
+        return door_open and "ENTER THE RIGHT DOOR" or "E: OPEN THE RIGHT DOOR"
+    end
+    if has_key then return "Return to the exit through the door." end
+    return "Find key, then return to door."
+end
+
+local last_interact_success = false
 function interact()
-    if won or lost then return end
+    last_interact_success = false
+    if won or lost then return false end
     local key = rooms[key_room()].key
     if not is_left_room() and not has_key
         and player.x <= key.x + key.width + 8
@@ -45,29 +73,46 @@ function interact()
         and player.y <= key.y + key.height + 8
         and player.y + player.size >= key.y - 8 then
         has_key = true
-        return
+        last_interact_success = true
+        return true
     end
-    if is_left_room() and in_doorway() and player.x <= room.wall + 32 then
+    local exit = exit_rect()
+    if exit.width > 0 and player.y < exit.y + exit.height and player.y + player.size > exit.y
+        and player.x + player.size / 2 >= exit.x - 32
+        and player.x + player.size / 2 <= exit.x + exit.width + 32 then
         if has_key then
             if current_room >= #rooms - 1 then
                 won = true
             else
                 current_room, player.x = current_room + 2, room.wall
                 has_key, door_open, player.ammo, spawn_grace = false, false, 6, 1.5
+                alarm, flash, bullet.active = false, 0, false
             end
+            last_interact_success = true
+            return true
         end
-        return
+        return false
     end
-    local door_x = is_left_room() and room.width - room.wall - player.size or room.wall
-    if in_doorway() and math.abs(player.x - door_x) <= 32 then
+    local door = door_rect()
+    if player.y < door.y + door.height and player.y + player.size > door.y
+        and math.abs((player.x + player.size / 2) - (door.x + door.width / 2)) <= 32 then
         door_open = not door_open
+        last_interact_success = true
+        return true
     end
+    return false
 end
 
 local function move(horizontal, vertical, dt)
     local obstacle = rooms[current_room].obstacle
-    local x = math.max(room.wall, math.min(room.width - room.wall - player.size,
-        player.x + horizontal * player.speed * dt))
+    local bounds_min = room.wall
+    local bounds_max = room.width - room.wall - player.size
+    local boundary_door = door_rect()
+    if door_open and in_doorway() then
+        if boundary_door.side == "left" then bounds_min = 0
+        else bounds_max = room.width - player.size end
+    end
+    local x = math.max(bounds_min, math.min(bounds_max, player.x + horizontal * player.speed * dt))
     if obstacle.width > 0 and player.y < obstacle.y + obstacle.height
         and player.y + player.size > obstacle.y then
         if horizontal > 0 and player.x + player.size <= obstacle.x then
@@ -89,9 +134,11 @@ local function move(horizontal, vertical, dt)
     end
     player.y = y
     if dt > 0 and door_open and in_doorway() then
-        if is_left_room() and horizontal > 0 and player.x == room.width - room.wall - player.size then
+        if is_left_room() and horizontal > 0
+            and player.x >= boundary_door.x - player.size then
             current_room, player.x, spawn_grace = current_room + 1, room.wall, 1.5
-        elseif not is_left_room() and horizontal < 0 and player.x == room.wall then
+        elseif not is_left_room() and horizontal < 0
+            and player.x <= boundary_door.x + boundary_door.width then
             current_room, player.x, spawn_grace = current_room - 1, room.width - room.wall - player.size, 1.5
         end
     end
@@ -203,7 +250,7 @@ function update(dt, horizontal, vertical)
     move(horizontal, vertical, dt)
     update_guards(dt)
     local guard = rooms[current_room].guard
-    if guard.health > 0
+    if spawn_grace <= 0 and guard.health > 0
         and player.x < guard.x + 16 and player.x + player.size > guard.x
         and player.y < guard.y + 16 and player.y + player.size > guard.y then
         lost = true
@@ -243,6 +290,7 @@ function snapshot()
     local data = rooms[current_room]
     local guard, obstacle = data.guard, data.obstacle
     local key = rooms[key_room()].key
+    local door, exit = door_rect(), exit_rect()
     return player.x, player.y, player.size, room.width, room.height, room.wall,
         current_room, door_open and 1 or 0, guard.detected and 1 or 0,
         guard.x, guard.y, guard.direction, guard.detected and 1 or 0,
@@ -251,5 +299,9 @@ function snapshot()
         player.aim_x, player.aim_y,
         has_key and 1 or 0, won and 1 or 0, lost and 1 or 0,
         flash, bullet.active and 1 or 0, bullet.x, bullet.y,
-        bullet.dx, bullet.dy, key.x, key.y
+        bullet.dx, bullet.dy, key.x, key.y,
+        math.floor((current_room + 1) / 2), #rooms / 2,
+        door.x, door.y, door.width, door.height, door.side == "left" and 1 or 0,
+        exit.x, exit.y, exit.width, exit.height, exit.width > 0 and 1 or 0,
+        objective(), last_interact_success and 1 or 0
 end

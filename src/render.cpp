@@ -1,64 +1,18 @@
 #include "render.hpp"
+#include "press_start_2p_8px.hpp"
 
 #include <array>
 #include <cmath>
 #include <string_view>
 
 namespace {
-using Glyph = std::array<const char*, 7>;
-
-const Glyph* glyphFor(char32_t character) {
-    static const Glyph p{{"#####", "#...#", "#...#", "#...#", "#...#", "#...#", "#...#"}};
-    static const Glyph o{{".###.", "#...#", "#...#", "#...#", "#...#", "#...#", ".###."}};
-    static const Glyph b{{"#####", "#....", "#....", "####.", "#...#", "#...#", "####."}};
-    static const Glyph e{{"#####", "#....", "#....", "####.", "#....", "#....", "#####"}};
-    static const Glyph d{{"..##.", ".#.#.", ".#.#.", ".#.#.", ".#.#.", "#####", "#...#"}};
-    static const Glyph a{{".###.", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"}};
-    static const Glyph r{{"####.", "#...#", "#...#", "####.", "#....", "#....", "#...."}};
-    static const Glyph zh{{"#.#.#", "#.#.#", "#.#.#", "#####", "#.#.#", "#.#.#", "#.#.#"}};
-    static const Glyph n{{"#...#", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"}};
-    static const Glyph i{{"#...#", "#...#", "#..##", "#.#.#", "##..#", "#...#", "#...#"}};
-    static const Glyph u{{"#...#", "#...#", "#...#", "#...#", "#...#", ".#.#.", "..#.."}};
-    static const Glyph z{{"#####", "....#", "...#.", "..#..", ".#...", "#....", "#####"}};
-    static const Glyph c{{".####", "#....", "#....", "#....", "#....", "#....", ".####"}};
-    static const Glyph s{{".####", "#....", "#....", ".###.", "....#", "....#", "####."}};
-    static const Glyph t{{"#####", "..#..", "..#..", "..#..", "..#..", "..#..", "..#.."}};
-    static const Glyph l{{"#....", "#....", "#....", "#....", "#....", "#....", "#####"}};
-    static const Glyph g{{".###.", "#...#", "#....", "#.###", "#...#", "#...#", ".###."}};
-    static const Glyph m{{"#...#", "##.##", "#.#.#", "#.#.#", "#...#", "#...#", "#...#"}};
-
-    switch (character) {
-    case U'П': return &p;
-    case U'О': return &o;
-    case U'Б': return &b;
-    case U'Е': return &e;
-    case U'Д': return &d;
-    case U'А': return &a;
-    case U'Р': return &r;
-    case U'Ж': return &zh;
-    case U'Н': return &n;
-    case U'И': return &i;
-    case U'У': return &u;
-    case U'З': return &z;
-    case U'C': return &c;
-    case U'S': return &s;
-    case U'T': return &t;
-    case U'L': return &l;
-    case U'G': return &g;
-    case U'M': return &m;
-    case U'P': return &p;
-    case U'O': return &o;
-    case U'B': return &b;
-    case U'E': return &e;
-    case U'D': return &d;
-    case U'A': return &a;
-    case U'R': return &r;
-    case U'N': return &n;
-    case U'I': return &i;
-    case U'U': return &u;
-    case U'Z': return &z;
-    default: return nullptr;
+const std::array<std::uint8_t, 8>* glyphFor(char32_t character) {
+    for (std::size_t index = 0; index < press_start_2p::codepoints.size(); ++index) {
+        if (press_start_2p::codepoints[index] == character) {
+            return &press_start_2p::glyph_rows[index];
+        }
     }
+    return nullptr;
 }
 
 // Wide lock-and-handle detail for the room-1 exit. The normal room door never
@@ -112,21 +66,26 @@ void drawHudKey(Renderer& renderer, int left, int top) {
 
 int pixelTextWidth(std::u32string_view text, int scale) {
     if (text.empty()) return 0;
-    return (static_cast<int>(text.size()) * 6 - 1) * scale;
+    return (static_cast<int>(text.size()) * 8) * scale;
 }
 
 void drawPixelText(Renderer& renderer, std::u32string_view text, int left, int top,
     int scale, Color color) {
     if (scale <= 0) return;
     for (std::size_t index = 0; index < text.size(); ++index) {
-        const Glyph* glyph = glyphFor(text[index]);
+        const auto* glyph = glyphFor(text[index]);
         if (!glyph) continue;
-        const int glyphLeft = left + static_cast<int>(index) * 6 * scale;
-        for (int row = 0; row < 7; ++row) {
-            for (int column = 0; column < 5; ++column) {
-                if ((*glyph)[row][column] == '#') {
-                    renderer.fillRect(glyphLeft + column * scale, top + row * scale,
-                        scale, scale, color);
+        const int glyphLeft = left + static_cast<int>(index) * 8 * scale;
+        for (int row = 0; row < 8; ++row) {
+            const std::uint8_t pixels = (*glyph)[row];
+            int column = 0;
+            while (column < 8) {
+                while (column < 8 && (pixels & (1u << (7 - column))) == 0) ++column;
+                const int runStart = column;
+                while (column < 8 && (pixels & (1u << (7 - column))) != 0) ++column;
+                if (runStart < column) {
+                    renderer.fillRect(glyphLeft + runStart * scale, top + row * scale,
+                        (column - runStart) * scale, scale, color);
                 }
             }
         }
@@ -163,7 +122,7 @@ void drawResultOverlay(Renderer& renderer, const GameState& state) {
     const std::u32string_view text = victory ? U"VICTORY" : U"CAPTURED";
     const int scale = 6;
     const int textWidth = pixelTextWidth(text, scale);
-    const int textHeight = 7 * scale;
+    const int textHeight = 8 * scale;
     const int left = panelLeft + (panelWidth - textWidth) / 2;
     const int top = panelTop + (panelHeight - textHeight) / 2;
     drawPixelText(renderer, text, left + 4, top + 4, scale, {10, 10, 10});
@@ -214,7 +173,7 @@ void drawMenuOverlay(Renderer& renderer, const GameState& state) {
     renderer.fillRect(left + 62, top + 141, panelWidth - 124, 3, {22, 86, 42});
 
     const std::u32string_view title = U"CASTLE ESCAPE";
-    const int titleScale = 5;
+    const int titleScale = 4;
     drawPixelText(renderer, title, left + (panelWidth - pixelTextWidth(title, titleScale)) / 2,
         top + 24, titleScale, {255, 246, 204});
     const std::u32string_view action = U"START GAME";
@@ -238,11 +197,12 @@ void renderFrame(Renderer& renderer, const GameState& state) {
         static_cast<int>(state.height - 2 * state.wall), {23, 28, 26});
 
     // Room-transition door: room 1 right wall, room 2 left wall.
-    renderer.fillRect(state.room == 1 ? 616 : 0, 176, 24, 64,
+    renderer.fillRect(static_cast<int>(state.door.x), static_cast<int>(state.door.y),
+        static_cast<int>(state.door.width), static_cast<int>(state.door.height),
         state.doorOpen ? Color{23, 28, 26} : Color{136, 100, 26});
 
     // Every odd-numbered room is a level entrance with its own exit.
-    if (state.room % 2 == 1) drawExit(renderer, state.hasKey);
+    if (state.exit.width > 0) drawExit(renderer, state.hasKey);
 
     renderer.fillRect(static_cast<int>(state.obstacle.x), static_cast<int>(state.obstacle.y),
         static_cast<int>(state.obstacle.width), static_cast<int>(state.obstacle.height),
@@ -302,5 +262,9 @@ void renderFrame(Renderer& renderer, const GameState& state) {
     }
     if (state.hasKey) drawHudKey(renderer, 112, 6);
 
+    const auto level = "LEVEL " + std::to_string(state.level) + "/" + std::to_string(state.levelCount);
+    drawPixelText(renderer, std::u32string(level.begin(), level.end()), 260, 5, 2, {255, 246, 204});
+    drawPixelText(renderer, std::u32string(state.objective.begin(), state.objective.end()),
+        24, 30, 2, {255, 246, 204});
     if (state.won || state.lost) drawResultOverlay(renderer, state);
 }

@@ -186,8 +186,8 @@ void menuWaitsForStart() {
 }
 
 void englishResultOverlayCoverage() {
-    require(pixelTextWidth(U"VICTORY", 6) == 246, "Victory text width is wrong");
-    require(pixelTextWidth(U"CAPTURED", 6) == 282, "Defeat text width is wrong");
+    require(pixelTextWidth(U"VICTORY", 6) == 336, "Victory text width is wrong");
+    require(pixelTextWidth(U"CAPTURED", 6) == 384, "Defeat text width is wrong");
 
     FakeRenderer renderer;
     GameState won{};

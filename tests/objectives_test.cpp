@@ -17,10 +17,17 @@ void enterSecondRoom(Game& game) {
 
 void lockedExit() {
     Game game;
+    const auto initial = game.snapshot();
+    require(initial.level == 1 && initial.levelCount == 3, "Lua level metadata is incorrect");
+    require(initial.door.x == 616 && !initial.doorOnLeft, "Odd room doorway geometry is incorrect");
+    require(initial.exit.x == 0 && initial.exit.width == 24 && initial.exitOnLeft,
+        "Level exit geometry is incorrect");
+    require(initial.objective.find("RIGHT DOOR") != std::string::npos, "Initial objective does not point to the right door");
     game.update(4.5, -1, 0);
     const auto atExit = game.snapshot();
     require(atExit.x == 24 && atExit.y == 200, "Failed to reach locked exit");
     game.interact();
+    require(!game.snapshot().interactSucceeded, "Locked exit interaction reported success");
     require(!game.snapshot().won, "Locked exit granted victory");
     require(!game.snapshot().hasKey, "Locked exit granted a key");
     std::cout << "PASS: locked exit does not win without key\n";
@@ -45,6 +52,10 @@ void keyAndVictory() {
     require(game.snapshot().y == 200, "Key row not reached");
     game.interact();
     require(game.snapshot().hasKey, "Key was not collected");
+    require(game.snapshot().interactSucceeded, "Successful key interaction was not reported");
+    require(game.snapshot().objective.find("Return") != std::string::npos ||
+        game.snapshot().objective.find("RETURN") != std::string::npos,
+        "Objective did not change after key pickup");
 
     // Return above the cover, then back to the room-two doorway.
     game.update(1.0, 0, -1);
@@ -61,6 +72,10 @@ void keyAndVictory() {
     game.interact();
     require(game.snapshot().room == 3 && !game.snapshot().won,
         "First level exit did not advance to level two");
+    require(game.snapshot().level == 2 && game.snapshot().levelCount == 3,
+        "Lua level metadata did not advance to level two");
+    require(game.snapshot().door.x == 616 && !game.snapshot().doorOnLeft,
+        "Odd room doorway side changed in level two entrance");
 
     // Level two: route above the room-three cover, cross to room four,
     // collect its key, then return through the door to the level exit.
@@ -80,6 +95,8 @@ void keyAndVictory() {
     game.interact();
     require(game.snapshot().room == 5 && !game.snapshot().won,
         "Second level exit did not advance to level three");
+    require(game.snapshot().level == 3 && game.snapshot().door.x == 616,
+        "Lua level metadata did not advance to level three");
 
     // Level three: the key is below the central cover.
     game.update(1.0, 0, 1);
