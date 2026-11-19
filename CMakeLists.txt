@@ -51,6 +51,8 @@ if(EMSCRIPTEN)
     -sINITIAL_MEMORY=67108864
     -sSTACK_SIZE=1048576
     --shell-file=${CMAKE_CURRENT_SOURCE_DIR}/web/shell.html)
+  set_property(TARGET castle_escape_web APPEND PROPERTY LINK_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/web/shell.html")
   set_target_properties(castle_escape_web PROPERTIES
     SUFFIX ".html"
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/dist/web"

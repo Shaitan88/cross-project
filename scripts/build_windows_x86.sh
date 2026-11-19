@@ -259,7 +259,7 @@ wine "$PROJECT_BUILD/castle_escape.exe" --smoke-test >"$SMOKE_LOG" 2>&1
 cat "$SMOKE_LOG"
 SMOKE_OUT="$(cat "$SMOKE_LOG")"
 
-for needle in 'PASS:' 'player x=304' 'Ammo 5' 'ALARM'; do
+for needle in 'PASS:' 'player x=304' 'Ammo 5' 'Quiet'; do
     if ! grep -q "$needle" <<<"$SMOKE_OUT"; then
         echo "ERROR: smoke output is missing: $needle" >&2
         exit 1

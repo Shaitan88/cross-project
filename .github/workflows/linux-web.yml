@@ -1,0 +1,59 @@
+name: Linux and Web builds
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  linux-x64:
+    name: Build and test on Linux x64
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out sources
+        uses: actions/checkout@v4
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake libsdl2-dev liblua5.4-dev
+
+      - name: Build and run tests
+        run: |
+          cmake -S . -B build-linux -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+          cmake --build build-linux --parallel
+          ctest --test-dir build-linux --output-on-failure
+
+      - name: Upload the Linux executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: castle_escape-linux-x64
+          path: build-linux/castle_escape
+          if-no-files-found: error
+
+  web:
+    name: Build for WebAssembly
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out sources
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends cmake curl make
+
+      - name: Build with pinned emsdk
+        env:
+          EMSDK_VERSION: 7.0.0
+        run: ./scripts/build_web.sh
+
+      - name: Upload Web artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: castle_escape-web
+          path: |
+            dist/web/castle_escape.html
+            dist/web/castle_escape.js
+            dist/web/castle_escape.wasm
+          if-no-files-found: error

@@ -22,6 +22,7 @@ LUA_BUILD="$BUILD/lua"
 PROJECT_BUILD="$BUILD/project"
 DIST="$ROOT/dist/web"
 EMSDK_DIR="${EMSDK_DIR:-$HOME/.local/emsdk}"
+EMSDK_VERSION="${EMSDK_VERSION:-7.0.0}"
 
 mkdir -p "$DOWNLOADS" "$SRC" "$LUA_BUILD" "$DIST"
 
@@ -61,7 +62,7 @@ setup_emsdk() {
                 require git
                 git clone https://github.com/emscripten-core/emsdk.git "$EMSDK_DIR"
             fi
-            ( cd "$EMSDK_DIR" && ./emsdk install latest && ./emsdk activate latest )
+            ( cd "$EMSDK_DIR" && ./emsdk install "$EMSDK_VERSION" && ./emsdk activate "$EMSDK_VERSION" )
         fi
     fi
 
