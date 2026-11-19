@@ -26,6 +26,7 @@ public:
     Application(Game& game, Platform& platform, AppOptions options = {});
     bool step();
     AppResult run();
+    void pauseForFocusLoss();
 
 private:
     Game& game_;
@@ -35,6 +36,7 @@ private:
     bool running_ = true;
     bool paused_ = false;
     bool menu_ = false;
+    bool focusPaused_ = false;
     double accumulator_ = 0;
     double previous_ = 0;
     AppResult result_{};

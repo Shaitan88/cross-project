@@ -23,10 +23,11 @@ SdlPlatform::SdlPlatform(bool smoke) : smoke_(smoke) {
 #if defined(__EMSCRIPTEN__)
     SDL_SetHint(SDL_HINT_EMSCRIPTEN_KEYBOARD_ELEMENT, "#canvas");
 #endif
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_AUDIO) != 0) {
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0) {
         throw std::runtime_error(SDL_GetError());
     }
     try {
+        audioInitialized_ = SDL_InitSubSystem(SDL_INIT_AUDIO) == 0;
         window_ = SDL_CreateWindow("Castle Escape", SDL_WINDOWPOS_CENTERED,
             SDL_WINDOWPOS_CENTERED, 960, 600, SDL_WINDOW_RESIZABLE);
         if (!window_) throw std::runtime_error(SDL_GetError());
@@ -41,7 +42,8 @@ SdlPlatform::SdlPlatform(bool smoke) : smoke_(smoke) {
         desired.channels = 1;
         desired.samples = 512;
         SDL_AudioSpec obtained{};
-        audioDevice_ = SDL_OpenAudioDevice(nullptr, 0, &desired, &obtained, 0);
+        if (audioInitialized_)
+            audioDevice_ = SDL_OpenAudioDevice(nullptr, 0, &desired, &obtained, 0);
         if (audioDevice_ != 0) SDL_PauseAudioDevice(audioDevice_, 0);
     } catch (...) {
         if (renderer_) SDL_DestroyRenderer(renderer_);
@@ -78,6 +80,15 @@ InputFrame SdlPlatform::pollInput() {
     while (SDL_PollEvent(&event)) {
         if (event.type == SDL_QUIT) {
             input.quitRequested = true;
+        } else if (event.type == SDL_WINDOWEVENT
+            && (event.window.event == SDL_WINDOWEVENT_FOCUS_LOST
+                || event.window.event == SDL_WINDOWEVENT_HIDDEN
+                || event.window.event == SDL_WINDOWEVENT_MINIMIZED)) {
+            hasFocus_ = false;
+            input.focusLost = true;
+        } else if (event.type == SDL_WINDOWEVENT
+            && event.window.event == SDL_WINDOWEVENT_FOCUS_GAINED) {
+            hasFocus_ = true;
         } else if (event.type == SDL_KEYDOWN) {
             if (event.key.keysym.sym == SDLK_ESCAPE) input.quitRequested = true;
             if (!event.key.repeat) {
@@ -92,6 +103,7 @@ InputFrame SdlPlatform::pollInput() {
     }
 
     const Uint8* keys = SDL_GetKeyboardState(nullptr);
+    if (!hasFocus_) return input;
     input.horizontal = (keys[SDL_SCANCODE_D] || keys[SDL_SCANCODE_RIGHT])
         - (keys[SDL_SCANCODE_A] || keys[SDL_SCANCODE_LEFT]);
     input.vertical = (keys[SDL_SCANCODE_S] || keys[SDL_SCANCODE_DOWN])

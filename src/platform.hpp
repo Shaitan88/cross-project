@@ -25,6 +25,7 @@ struct InputFrame {
     bool pausePressed = false;
     bool startPressed = false;
     bool quitRequested = false;
+    bool focusLost = false;
 };
 
 class Platform {

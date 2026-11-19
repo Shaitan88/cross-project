@@ -32,6 +32,13 @@ AppResult Application::run() {
     return result_;
 }
 
+void Application::pauseForFocusLoss() {
+    focusPaused_ = true;
+    paused_ = true;
+    accumulator_ = 0;
+    previous_ = platform_.nowSeconds();
+}
+
 bool Application::step() {
     if (!running_) return false;
 
@@ -47,15 +54,21 @@ bool Application::step() {
         return false;
     }
 
-    if (input.restartPressed) {
+    if (input.focusLost) {
+        pauseForFocusLoss();
+    }
+
+    if (input.restartPressed && !input.focusLost) {
         game_.restart();
         accumulator_ = 0;
         previous_ = platform_.nowSeconds();
     }
     if (menu_) {
         const GameState state = game_.snapshot();
-        if (input.startPressed) {
+        if (input.startPressed && !input.focusLost) {
             menu_ = false;
+            accumulator_ = 0;
+            previous_ = platform_.nowSeconds();
             platform_.playTone(660, 100);
         }
         result_.title = menu_ ? "Castle Escape | MENU | Enter/Space: start | Esc: quit"
@@ -66,11 +79,22 @@ bool Application::step() {
         platform_.renderer().present();
         ++result_.frames;
         if (options_.stopAfterFrames > 0 && result_.frames >= options_.stopAfterFrames) running_ = false;
+        if (!options_.deterministic) platform_.delay(16);
         return running_;
     }
-    if (input.pausePressed) {
+    if (input.pausePressed && !input.focusLost) {
         paused_ = !paused_;
+        focusPaused_ = false;
+        accumulator_ = 0;
+        previous_ = platform_.nowSeconds();
         platform_.playTone(paused_ ? 330 : 660, 100);
+    }
+    if (paused_ && focusPaused_ && (input.startPressed || input.pausePressed) && !input.focusLost) {
+        paused_ = false;
+        focusPaused_ = false;
+        accumulator_ = 0;
+        previous_ = platform_.nowSeconds();
+        platform_.playTone(660, 100);
     }
     if (paused_) {
         const GameState state = game_.snapshot();
@@ -81,6 +105,7 @@ bool Application::step() {
         platform_.renderer().present();
         ++result_.frames;
         if (options_.stopAfterFrames > 0 && result_.frames >= options_.stopAfterFrames) running_ = false;
+        if (!options_.deterministic) platform_.delay(16);
         return running_;
     }
     if (input.interactPressed) {

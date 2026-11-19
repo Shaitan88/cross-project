@@ -30,4 +30,6 @@ private:
     SDL_Window* window_ = nullptr;
     SDL_Renderer* renderer_ = nullptr;
     unsigned int audioDevice_ = 0;
+    bool hasFocus_ = true;
+    bool audioInitialized_ = false;
 };
