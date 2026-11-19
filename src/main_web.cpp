@@ -7,6 +7,7 @@
 extern "C" EMSCRIPTEN_KEEPALIVE void castle_focus_lost();
 
 namespace {
+struct WebAppState;
 WebAppState* activeState = nullptr;
 // Member order matters: the platform and application hold references into the
 // game, so it must be constructed first. The whole state lives for the
