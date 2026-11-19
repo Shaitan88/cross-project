@@ -94,7 +94,7 @@ void actionFramesRestartAndQuit() {
     require(renderer.presentCount == 3, "Each frame was not presented exactly once");
     require(platform.title().find("Ammo 6 | Quiet") != std::string::npos,
         "Restarted title lacks ammo and quiet state");
-    require(platform.toneCount == 2, "Action sounds were not emitted");
+    require(platform.toneCount == 1, "Only successful actions should play a tone");
     std::cout << "PASS: input edges dispatch actions, restart resets state and loop frames render\n";
 }
 

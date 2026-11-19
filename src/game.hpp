@@ -1,8 +1,8 @@
 #pragma once
 
+#include <array>
 #include <string>
-
-#include <string>
+#include <vector>
 
 struct lua_State;
 
@@ -46,6 +46,9 @@ struct GameState {
     bool exitOnLeft;
     std::string objective;
     bool interactSucceeded;
+    std::vector<std::array<double, 5>> doors, objects;
+    std::vector<std::array<double, 4>> guards, covers;
+    int alarmSeconds;
 };
 
 class Game {
@@ -55,8 +58,9 @@ public:
     Game(const Game&) = delete;
     Game& operator=(const Game&) = delete;
     void update(double dt, int horizontal, int vertical);
-    void interact();
-    void shoot();
+    bool interact();
+    bool shoot();
+    void aim(int horizontal, int vertical);
     void restart();
     GameState snapshot();
 private:

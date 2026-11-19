@@ -1,6 +1,4 @@
 #include "game.hpp"
-
-#include <cmath>
 #include <iostream>
 #include <stdexcept>
 
@@ -9,178 +7,142 @@ void require(bool condition, const char* message) {
     if (!condition) throw std::runtime_error(message);
 }
 
-void enterSecondRoom(Game& game) {
-    game.update(4.5, 1, 0);
-    game.interact();
-    game.update(0.1, 1, 0);
-}
-
-void lockedExit() {
-    Game game;
-    const auto initial = game.snapshot();
-    require(initial.level == 1 && initial.levelCount == 3, "Lua level metadata is incorrect");
-    require(initial.door.x == 616 && !initial.doorOnLeft, "Odd room doorway geometry is incorrect");
-    require(initial.exit.x == 0 && initial.exit.width == 24 && initial.exitOnLeft,
-        "Level exit geometry is incorrect");
-    require(initial.objective.find("RIGHT DOOR") != std::string::npos, "Initial objective does not point to the right door");
-    game.update(4.5, -1, 0);
-    const auto atExit = game.snapshot();
-    require(atExit.x == 24 && atExit.y == 200, "Failed to reach locked exit");
-    game.interact();
-    require(!game.snapshot().interactSucceeded, "Locked exit interaction reported success");
-    require(!game.snapshot().won, "Locked exit granted victory");
-    require(!game.snapshot().hasKey, "Locked exit granted a key");
-    std::cout << "PASS: locked exit does not win without key\n";
-}
-
-void keyAndVictory() {
-    Game game;
-    enterSecondRoom(game);
-    require(game.snapshot().room == 2 && game.snapshot().x == 24, "Did not enter room two");
-
-    // Climb above the room-two cover (cover spans y=120..280).
-    game.update(1.0, 0, -1);
-    require(game.snapshot().y <= 104, "Did not clear cover vertically");
-
-    // Slide right past the cover to the key's column.
-    game.update(4.5, 1, 0);
-    const auto atKeyColumn = game.snapshot();
-    require(atKeyColumn.x >= 552 && atKeyColumn.x <= 568, "Key column not reached");
-
-    // Drop back to the key's row and collect it.
-    game.update(1.0, 0, 1);
-    require(game.snapshot().y == 200, "Key row not reached");
-    game.interact();
-    require(game.snapshot().hasKey, "Key was not collected");
-    require(game.snapshot().interactSucceeded, "Successful key interaction was not reported");
-    require(game.snapshot().objective.find("Return") != std::string::npos ||
-        game.snapshot().objective.find("RETURN") != std::string::npos,
-        "Objective did not change after key pickup");
-
-    // Return above the cover, then back to the room-two doorway.
-    game.update(1.0, 0, -1);
-    game.update(4.5, -1, 0);
-    require(game.snapshot().x == 24, "Did not return to the room-two doorway");
-    game.update(1.0, 0, 1);
-    require(game.snapshot().doorOpen, "Return door should remain open");
-    game.update(0.1, -1, 0);
-    require(game.snapshot().room == 1, "Did not return to room one");
-
-    // Cross room one to the exit at the left wall.
-    game.update(5, -1, 0);
-    require(game.snapshot().x == 24 && game.snapshot().y == 200, "Did not reach the exit");
-    game.interact();
-    require(game.snapshot().room == 3 && !game.snapshot().won,
-        "First level exit did not advance to level two");
-    require(game.snapshot().level == 2 && game.snapshot().levelCount == 3,
-        "Lua level metadata did not advance to level two");
-    require(game.snapshot().door.x == 616 && !game.snapshot().doorOnLeft,
-        "Odd room doorway side changed in level two entrance");
-
-    // Level two: route above the room-three cover, cross to room four,
-    // collect its key, then return through the door to the level exit.
-    game.update(1.0, 0, -1);
-    game.update(5, 1, 0);
-    game.update(1.0, 0, 1);
-    game.interact();
-    game.update(0.1, 1, 0);
-    game.update(4.5, 1, 0);
-    game.interact();
-    game.update(4.5, -1, 0);
-    game.update(0.1, -1, 0);
-    game.update(1.0, 0, -1);
-    game.update(4.5, -1, 0);
-    game.update(1.0, 0, 1);
-    game.update(5, -1, 0);
-    game.interact();
-    require(game.snapshot().room == 5 && !game.snapshot().won,
-        "Second level exit did not advance to level three");
-    require(game.snapshot().level == 3 && game.snapshot().door.x == 616,
-        "Lua level metadata did not advance to level three");
-
-    // Level three: the key is below the central cover.
-    game.update(1.0, 0, 1);
-    game.update(5, 1, 0);
-    game.update(1.0, 0, -1);
-    game.interact();
-    game.update(0.1, 1, 0);
-    game.update(4.5, 1, 0);
-    game.interact();
-    game.update(4.5, -1, 0);
-    game.update(1.0, 0, 1);
-    game.update(4.5, -1, 0);
-    game.update(1.0, 0, -1);
-    game.update(5, -1, 0);
-    game.interact();
-    const auto finished = game.snapshot();
-    require(finished.won, "Final level key did not unlock victory");
-    require(!finished.lost, "Victory also marked the player lost");
-    std::cout << "PASS: keys unlock three sequential levels and final victory\n";
-}
-
-void defeatAndRestart() {
-    Game game;
-    game.update(1.0, 0, -1);
-    require(game.snapshot().y == 80, "Did not reach guard row");
-    bool caught = false;
-    for (int i = 0; i < 1200 && !caught; ++i) {
-        game.update(1.0 / 60, 1, 0);
-        caught = game.snapshot().lost;
+void walk(Game& game, int x, int y) {
+    for (int step = 0; step < 400; ++step) {
+        const auto state = game.snapshot();
+        if (state.lost) throw std::runtime_error("Caught walking in mission " +
+            std::to_string(state.level) + ", room " + std::to_string(state.room));
+        const int dx = state.x < x - 1 ? 1 : state.x > x + 1 ? -1 : 0;
+        const int dy = state.y < y - 1 ? 1 : state.y > y + 1 ? -1 : 0;
+        if (dx == 0 && dy == 0) return;
+        game.update(1.0 / 60, dx, dx == 0 ? dy : 0);
     }
-    require(caught, "Living guard never caught the player");
-    require(game.snapshot().alarm, "Defeat did not raise the alarm");
-
-    game.restart();
-    const auto fresh = game.snapshot();
-    require(fresh.x == 64 && fresh.y == 200, "Restart did not reset position");
-    require(fresh.ammo == 6, "Restart did not reset ammo");
-    require(fresh.room == 1, "Restart did not reset room");
-    require(!fresh.hasKey, "Restart kept the key");
-    require(!fresh.won, "Restart kept victory");
-    require(!fresh.lost, "Restart kept defeat");
-    require(!fresh.alarm, "Restart kept alarm");
-    require(fresh.flash == 0, "Restart kept shot flash");
-    require(!fresh.bulletActive, "Restart kept bullet alive");
-    std::cout << "PASS: guard contact loses, alarm latches, restart fully resets\n";
-}
-
-void shotEffects() {
-    Game game;
-    game.shoot();
-    auto state = game.snapshot();
-    require(state.flash > 0, "Shot did not flash");
-    require(state.bulletActive, "Shot did not spawn bullet");
-    require(state.ammo == 5, "Shot did not consume one round");
-    require(state.alarm, "Shot did not raise alarm");
-    game.update(0.05, 0, 0);
-    require(game.snapshot().bulletActive, "Bullet expired too early");
-    game.update(1.0, 0, 0);
-    state = game.snapshot();
-    require(!state.bulletActive, "Bullet never expired");
-    require(state.flash == 0, "Shot flash never faded");
-    std::cout << "PASS: shot flash, bullet lifetime and ammo consumption\n";
-}
-
-void keyMetadata() {
-    Game game;
     const auto state = game.snapshot();
-    require(std::abs(state.keyX - 552) < 1e-9, "Key x metadata incorrect");
-    require(std::abs(state.keyY - 192) < 1e-9, "Key y metadata incorrect");
-    require(!state.hasKey, "Key reported as collected at start");
-    std::cout << "PASS: key metadata reports room-two location\n";
+    throw std::runtime_error("Waypoint " + std::to_string(x) + "," + std::to_string(y)
+        + " unreachable in mission " + std::to_string(state.level) + ", room " + std::to_string(state.room));
+}
+
+void cross(Game& game, char side, int room) {
+    const int x = side == 'L' ? 24 : side == 'R' ? 600 : 312;
+    const int y = side == 'U' ? 24 : side == 'D' ? 360 : 192;
+    for (int step = 0; step < 800 && game.snapshot().room != room; ++step) {
+        const auto s = game.snapshot();
+        if (s.lost) throw std::runtime_error("Caught in mission " + std::to_string(s.level)
+            + ", room " + std::to_string(s.room) + " before door " + side);
+        const bool horizontal = side == 'L' || side == 'R';
+        const int dx = s.x < x - 1 ? 1 : s.x > x + 1 ? -1 : 0;
+        const int dy = s.y < y - 1 ? 1 : s.y > y + 1 ? -1 : 0;
+        if (!dx && !dy) {
+            game.interact();
+            game.update(1.0 / 60, side == 'L' ? -1 : side == 'R' ? 1 : 0,
+                side == 'U' ? -1 : side == 'D' ? 1 : 0);
+        } else if (horizontal) {
+            game.update(1.0 / 60, dy == 0 ? dx : 0, dy);
+        } else {
+            game.update(1.0 / 60, dx, dx == 0 ? dy : 0);
+        }
+    }
+    require(game.snapshot().room == room, "Door did not lead to expected room");
+    require(game.snapshot().objective.empty() == (room != 1), "Mission hint leaked outside first room");
+}
+
+void finish(Game& game) {
+    walk(game, game.snapshot().level == 3 ? 190 : 530, 192);
+    require(game.interact(), "Exit interaction failed");
+    game.update(1.0 / 60, 0, 0);
+}
+void powerBranch(Game& game, bool left) {
+    const int first = left ? 2 : 4;
+    const int last = left ? 3 : 5;
+    cross(game, left ? 'L' : 'R', first);
+    // Go above the cover before aligning with the far wall.
+    walk(game, left ? 598 : 26, 40);
+    walk(game, left ? 28 : 596, 40);
+    cross(game, left ? 'L' : 'R', last);
+    walk(game, left ? 598 : 26, left ? 310 : 42);
+    walk(game, 552, left ? 310 : 42);
+    require(game.interact(), "Switch interaction failed");
+    walk(game, 552, left ? 310 : 42);
+    walk(game, left ? 598 : 26, left ? 310 : 42);
+    cross(game, left ? 'R' : 'L', first);
+    walk(game, left ? 26 : 598, 40);
+    walk(game, left ? 596 : 28, 40);
+    cross(game, left ? 'R' : 'L', 1);
+}
+
+void campaign(Game& game, bool alternative) {
+    require(game.snapshot().level == 1 && !game.snapshot().objective.empty(), "Campaign did not start correctly");
+    cross(game, 'R', 2);
+    if (alternative) {
+        cross(game, 'D', 4);
+        walk(game, 220, 26);
+        walk(game, 220, 320);
+        walk(game, 590, 320);
+        cross(game, 'R', 3);
+    } else {
+        cross(game, 'R', 3);
+    }
+    walk(game, 552, 192);
+    require(game.interact() && game.snapshot().hasKey, "Key was not collected");
+    cross(game, 'R', 5);
+    require(game.snapshot().ammo == 6, "Escape used ammunition");
+    finish(game);
+    require(game.snapshot().level == 2, "Sabotage did not unlock");
+    require(game.snapshot().doors.back()[4] == 2, "Powered exit was already open");
+    powerBranch(game, alternative);
+    require(game.snapshot().doors.back()[4] == 2, "One switch unlocked the powered exit");
+    powerBranch(game, !alternative);
+    cross(game, 'U', 6);
+    finish(game);
+    require(game.snapshot().level == 3, "Breakout did not unlock");
+    if (alternative) {
+        cross(game, 'D', 3);
+        walk(game, 410, 26);
+        cross(game, 'R', 2);
+    } else {
+        cross(game, 'R', 2);
+    }
+    // The control panels are below the patrol lane.
+    walk(game, static_cast<int>(game.snapshot().x), 294);
+    walk(game, 552, 294);
+    require(game.interact(), "First gate panel failed");
+    if (alternative) {
+        walk(game, 312, 294);
+        cross(game, 'U', 5);
+        walk(game, 26, 330);
+        walk(game, 598, 330);
+        cross(game, 'R', 4);
+    } else {
+        walk(game, 590, 294);
+        cross(game, 'R', 4);
+    }
+    walk(game, alternative ? 312 : 26, 294);
+    walk(game, 552, 294);
+    require(game.interact(), "Second gate panel failed");
+    if (alternative) {
+        walk(game, 570, 294);
+        walk(game, 570, 30);
+        cross(game, 'U', 5);
+        walk(game, 598, 330);
+        cross(game, 'D', 6);
+    } else {
+        walk(game, 590, 294);
+        cross(game, 'R', 6);
+    }
+    finish(game);
+    require(game.snapshot().won, "Campaign did not finish");
 }
 }
 
 int main() {
     try {
-        lockedExit();
-        keyAndVictory();
-        defeatAndRestart();
-        shotEffects();
-        keyMetadata();
-        return 0;
+        Game game;
+        campaign(game, false);
+        game.restart();
+        campaign(game, true);
+        std::cout << "PASS: two 60 Hz campaign routes and both switch orders\n";
     } catch (const std::exception& error) {
-        std::cerr << "FAIL: " << error.what() << '\n';
+        std::cerr << error.what() << '\n';
         return 1;
     }
 }

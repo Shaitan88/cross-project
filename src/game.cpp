@@ -41,15 +41,27 @@ void Game::update(double dt, int horizontal, int vertical) {
     call(3, 0);
 }
 
-void Game::interact() {
+bool Game::interact() {
     lua_getglobal(lua_, "interact");
     call(0, 1);
+    const bool result = lua_toboolean(lua_, -1);
     lua_pop(lua_, 1);
+    return result;
 }
 
-void Game::shoot() {
+bool Game::shoot() {
     lua_getglobal(lua_, "shoot");
-    call(0, 0);
+    call(0, 1);
+    const bool result = lua_toboolean(lua_, -1);
+    lua_pop(lua_, 1);
+    return result;
+}
+
+void Game::aim(int horizontal, int vertical) {
+    lua_getglobal(lua_, "aim");
+    lua_pushinteger(lua_, horizontal);
+    lua_pushinteger(lua_, vertical);
+    call(2, 0);
 }
 
 void Game::restart() {
@@ -60,26 +72,26 @@ void Game::restart() {
 GameState Game::snapshot() {
     lua_getglobal(lua_, "snapshot");
     constexpr int count = 48;
-    call(0, count);
+    if (!lua_checkstack(lua_, 56)) throw std::runtime_error("Lua stack unavailable");
+    call(0, count + 5);
     double values[count]{};
     std::string objective;
     for (int i = 0; i < count; ++i) {
         if (i == 46) {
-            if (!lua_isstring(lua_, i - count)) {
+            if (!lua_isstring(lua_, i - count - 5)) {
                 lua_pop(lua_, count);
                 throw std::runtime_error("Lua objective must be a string");
             }
-            objective = lua_tostring(lua_, i - count);
+            objective = lua_tostring(lua_, i - count - 5);
             continue;
         }
-        if (!lua_isnumber(lua_, i - count)) {
+        if (!lua_isnumber(lua_, i - count - 5)) {
             lua_pop(lua_, count);
             throw std::runtime_error("Lua snapshot contains an invalid value");
         }
-        values[i] = lua_tonumber(lua_, i - count);
+        values[i] = lua_tonumber(lua_, i - count - 5);
     }
-    lua_pop(lua_, count);
-    return {values[0], values[1], values[2], values[3], values[4], values[5],
+    GameState state{values[0], values[1], values[2], values[3], values[4], values[5],
         static_cast<int>(values[6]), values[7] != 0, values[8] != 0,
         {values[9], values[10], static_cast<int>(values[11]), values[12] != 0,
             static_cast<int>(values[17]), values[18] != 0},
@@ -91,4 +103,24 @@ GameState Game::snapshot() {
         {values[36], values[37], values[38], values[39]}, values[40] != 0,
         {values[41], values[42], values[43], values[44]}, values[45] != 0,
         std::move(objective), values[47] != 0};
+    const auto readRows = [&](int index, auto& rows) {
+        const auto length = lua_rawlen(lua_, index);
+        for (std::size_t i = 1; i <= length; ++i) {
+            lua_rawgeti(lua_, index, i);
+            auto& row = rows.emplace_back();
+            for (std::size_t j = 0; j < row.size(); ++j) {
+                lua_rawgeti(lua_, -1, j + 1);
+                row[j] = lua_tonumber(lua_, -1);
+                lua_pop(lua_, 1);
+            }
+            lua_pop(lua_, 1);
+        }
+    };
+    readRows(-5, state.doors);
+    readRows(-4, state.guards);
+    readRows(-3, state.covers);
+    readRows(-2, state.objects);
+    state.alarmSeconds = static_cast<int>(lua_tointeger(lua_, -1));
+    lua_pop(lua_, count + 5);
+    return state;
 }

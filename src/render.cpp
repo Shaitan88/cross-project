@@ -15,28 +15,6 @@ const std::array<std::uint8_t, 8>* glyphFor(char32_t character) {
     return nullptr;
 }
 
-// Wide lock-and-handle detail for the room-1 exit. The normal room door never
-// gets this treatment, so the exit stays visually distinct from both doorways.
-void drawExit(Renderer& renderer, bool unlocked) {
-    if (unlocked) {
-        renderer.fillRect(0, 176, 24, 64, {46, 142, 68});          // green door
-        renderer.fillRect(0, 176, 24, 2, {226, 194, 92});           // gold frame
-        renderer.fillRect(0, 238, 24, 2, {226, 194, 92});
-        renderer.fillRect(0, 176, 2, 64, {226, 194, 92});
-        renderer.fillRect(22, 176, 2, 64, {226, 194, 92});
-        renderer.fillRect(5, 205, 14, 4, {240, 208, 104});          // bright lock bar
-        renderer.fillRect(15, 199, 5, 11, {255, 228, 132});         // gold knob
-    } else {
-        renderer.fillRect(0, 176, 24, 64, {108, 40, 34});           // dark red/brown
-        renderer.fillRect(0, 176, 24, 2, {62, 23, 20});             // dark frame
-        renderer.fillRect(0, 238, 24, 2, {62, 23, 20});
-        renderer.fillRect(0, 176, 2, 64, {62, 23, 20});
-        renderer.fillRect(22, 176, 2, 64, {62, 23, 20});
-        renderer.fillRect(5, 205, 14, 4, {64, 57, 52});             // iron lock bar
-        renderer.fillRect(15, 199, 5, 11, {146, 118, 54});          // dull knob
-    }
-}
-
 // World key: ring, shaft and two teeth inside the 16x16 footprint reported by
 // the Lua key rectangle (keyX/keyY are its top-left corner).
 void drawWorldKey(Renderer& renderer, double keyX, double keyY) {
@@ -196,25 +174,28 @@ void renderFrame(Renderer& renderer, const GameState& state) {
         static_cast<int>(state.width - 2 * state.wall),
         static_cast<int>(state.height - 2 * state.wall), {23, 28, 26});
 
-    // Room-transition door: room 1 right wall, room 2 left wall.
-    renderer.fillRect(static_cast<int>(state.door.x), static_cast<int>(state.door.y),
-        static_cast<int>(state.door.width), static_cast<int>(state.door.height),
-        state.doorOpen ? Color{23, 28, 26} : Color{136, 100, 26});
-
-    // Every odd-numbered room is a level entrance with its own exit.
-    if (state.exit.width > 0) drawExit(renderer, state.hasKey);
-
-    renderer.fillRect(static_cast<int>(state.obstacle.x), static_cast<int>(state.obstacle.y),
-        static_cast<int>(state.obstacle.width), static_cast<int>(state.obstacle.height),
-        {91, 102, 94});
-
-    const int guardX = static_cast<int>(state.guard.x);
-    const int guardY = static_cast<int>(state.guard.y);
-    renderer.fillRect(guardX, guardY, 16, 16,
-        state.guard.dead ? Color{90, 90, 65} : Color{215, 75, 65});
-    if (state.guard.dead) {
-        renderer.drawLine(guardX, guardY, guardX + 15, guardY + 15, {23, 28, 26});
-        renderer.drawLine(guardX + 15, guardY, guardX, guardY + 15, {23, 28, 26});
+    const auto drawRect = [&](const auto& rect, Color color) {
+        renderer.fillRect(static_cast<int>(rect[0]), static_cast<int>(rect[1]),
+            static_cast<int>(rect[2]), static_cast<int>(rect[3]), color);
+    };
+    for (const auto& door : state.doors) {
+        drawRect(door, door[4] == 2 ? Color{165, 57, 49} :
+            door[4] == 1 ? Color{55, 104, 76} : Color{166, 126, 52});
+    }
+    for (const auto& cover : state.covers) drawRect(cover, {91, 102, 94});
+    for (const auto& object : state.objects) {
+        if (object[4] == 1) drawWorldKey(renderer, object[0], object[1]);
+        else drawRect(object, object[4] == 2 ? Color{102, 225, 177} :
+            object[4] == 3 ? Color{255, 159, 64} : Color{93, 171, 224});
+    }
+    for (const auto& guard : state.guards) {
+        const auto x = static_cast<int>(guard[0]);
+        const auto y = static_cast<int>(guard[1]);
+        renderer.fillRect(x, y, 16, 16, guard[2] > 0 ? Color{215, 75, 65} : Color{90, 90, 65});
+        if (guard[3] > 0) {
+            const char32_t digit = U'0' + static_cast<int>(guard[3]);
+            drawPixelText(renderer, std::u32string_view(&digit, 1), x, y - 18, 2, {255, 218, 102});
+        }
     }
 
     const int playerX = static_cast<int>(state.x);
@@ -224,9 +205,6 @@ void renderFrame(Renderer& renderer, const GameState& state) {
     renderer.drawLine(playerX + 8, playerY + 8,
         static_cast<int>(state.x + 8 + state.aimX * 24),
         static_cast<int>(state.y + 8 + state.aimY * 24), {221, 194, 113});
-
-    // The active level's key is present in each even-numbered room.
-    if (state.room % 2 == 0 && !state.hasKey) drawWorldKey(renderer, state.keyX, state.keyY);
 
     const double aimLength = std::hypot(state.aimX, state.aimY);
     const double aimX = aimLength > 1e-9 ? state.aimX / aimLength : 1.0;
@@ -262,9 +240,11 @@ void renderFrame(Renderer& renderer, const GameState& state) {
     }
     if (state.hasKey) drawHudKey(renderer, 112, 6);
 
-    const auto level = "LEVEL " + std::to_string(state.level) + "/" + std::to_string(state.levelCount);
-    drawPixelText(renderer, std::u32string(level.begin(), level.end()), 260, 5, 2, {255, 246, 204});
+    if (state.alarmSeconds > 0) {
+        const auto seconds = std::to_string(state.alarmSeconds);
+        drawPixelText(renderer, std::u32string(seconds.begin(), seconds.end()), 300, 5, 2, {255, 77, 69});
+    }
     drawPixelText(renderer, std::u32string(state.objective.begin(), state.objective.end()),
-        24, 30, 2, {255, 246, 204});
+        24, 30, 1, {255, 246, 204});
     if (state.won || state.lost) drawResultOverlay(renderer, state);
 }
