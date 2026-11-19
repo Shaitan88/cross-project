@@ -29,7 +29,7 @@ AppResult Application::run() {
 }
 
 void Application::pauseForFocusLoss() {
-    focusPaused_ = true;
+    if (menu_) return;
     paused_ = true;
     accumulator_ = 0;
     previous_ = platform_.nowSeconds();
@@ -80,17 +80,9 @@ bool Application::step() {
     }
     if (input.pausePressed && !input.focusLost) {
         paused_ = !paused_;
-        focusPaused_ = false;
         accumulator_ = 0;
         previous_ = platform_.nowSeconds();
         platform_.playTone(paused_ ? 330 : 660, 100);
-    }
-    if (paused_ && focusPaused_ && (input.startPressed || input.pausePressed) && !input.focusLost) {
-        paused_ = false;
-        focusPaused_ = false;
-        accumulator_ = 0;
-        previous_ = platform_.nowSeconds();
-        platform_.playTone(660, 100);
     }
     if (paused_) {
         const GameState state = game_.snapshot();
