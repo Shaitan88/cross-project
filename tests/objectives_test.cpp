@@ -11,7 +11,9 @@ void walk(Game& game, int x, int y) {
     for (int step = 0; step < 400; ++step) {
         const auto state = game.snapshot();
         if (state.lost) throw std::runtime_error("Caught walking in mission " +
-            std::to_string(state.level) + ", room " + std::to_string(state.room));
+            std::to_string(state.level) + ", room " + std::to_string(state.room)
+            + " at " + std::to_string(state.x) + "," + std::to_string(state.y)
+            + " alarm=" + std::to_string(state.alarm));
         const int dx = state.x < x - 1 ? 1 : state.x > x + 1 ? -1 : 0;
         const int dy = state.y < y - 1 ? 1 : state.y > y + 1 ? -1 : 0;
         if (dx == 0 && dy == 0) return;
@@ -47,7 +49,8 @@ void cross(Game& game, char side, int room) {
 }
 
 void finish(Game& game) {
-    walk(game, game.snapshot().level == 3 ? 190 : 530, 192);
+    const bool breakout = game.snapshot().level == 3;
+    walk(game, breakout ? 190 : 530, breakout ? 144 : 192);
     require(game.interact(), "Exit interaction failed");
     game.update(1.0 / 60, 0, 0);
 }
@@ -86,8 +89,10 @@ void campaign(Game& game, bool alternative) {
     require(game.interact() && game.snapshot().hasKey, "Key was not collected");
     cross(game, 'R', 5);
     require(game.snapshot().ammo == 6, "Escape used ammunition");
+    if (alternative) require(game.shoot(), "Could not spend round before exiting");
     finish(game);
     require(game.snapshot().level == 2, "Sabotage did not unlock");
+    require(game.snapshot().ammo == (alternative ? 5 : 6), "Ammo changed at the mission boundary");
     require(game.snapshot().doors.back()[4] == 2, "Powered exit was already open");
     powerBranch(game, alternative);
     require(game.snapshot().doors.back()[4] == 2, "One switch unlocked the powered exit");
@@ -95,6 +100,7 @@ void campaign(Game& game, bool alternative) {
     cross(game, 'U', 6);
     finish(game);
     require(game.snapshot().level == 3, "Breakout did not unlock");
+    require(game.snapshot().ammo == (alternative ? 5 : 6), "Ammo changed at the second mission boundary");
     if (alternative) {
         cross(game, 'D', 3);
         walk(game, 410, 26);

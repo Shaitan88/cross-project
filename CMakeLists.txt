@@ -57,6 +57,10 @@ if(EMSCRIPTEN)
     SUFFIX ".html"
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/dist/web"
     OUTPUT_NAME "castle_escape")
+  add_custom_command(TARGET castle_escape_web POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+      "${CMAKE_CURRENT_SOURCE_DIR}/dist/web/castle_escape.html"
+      "${CMAKE_CURRENT_SOURCE_DIR}/dist/web/index.html")
 else()
   add_executable(castle_escape src/main.cpp)
   target_link_libraries(castle_escape PRIVATE game_app platform_sdl)

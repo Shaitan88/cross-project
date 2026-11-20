@@ -179,8 +179,24 @@ void renderFrame(Renderer& renderer, const GameState& state) {
             static_cast<int>(rect[2]), static_cast<int>(rect[3]), color);
     };
     for (const auto& door : state.doors) {
-        drawRect(door, door[4] == 2 ? Color{165, 57, 49} :
-            door[4] == 1 ? Color{55, 104, 76} : Color{166, 126, 52});
+        if (door[4] != 2) {
+            drawRect(door, door[4] == 1 ? Color{55, 104, 76} : Color{166, 126, 52});
+            continue;
+        }
+        const int x = static_cast<int>(door[0]), y = static_cast<int>(door[1]);
+        const int w = static_cast<int>(door[2]), h = static_cast<int>(door[3]);
+        drawRect(door, {37, 30, 28});
+        renderer.fillRect(x + 2, y + 2, w - 4, h - 4, {107, 65, 49});
+        renderer.fillRect(x + 4, y + 4, w - 8, h - 8, {70, 44, 37});
+        for (int offset = 7; offset < w - 5; offset += 5) {
+            renderer.fillRect(x + offset, y + 5, 2, h - 10, {88, 53, 42});
+        }
+        const int cx = x + w / 2, cy = y + h / 2;
+        renderer.fillRect(x + 2, cy - 2, w - 4, 4, {43, 46, 48});
+        renderer.fillRect(cx - 4, cy - 7, 8, 8, {221, 176, 91});
+        renderer.fillRect(cx - 2, cy - 5, 4, 5, {70, 44, 37});
+        renderer.fillRect(cx - 6, cy - 1, 12, 9, {221, 176, 91});
+        renderer.fillRect(cx - 1, cy + 2, 2, 3, {70, 44, 37});
     }
     for (const auto& cover : state.covers) drawRect(cover, {91, 102, 94});
     for (const auto& object : state.objects) {
@@ -191,7 +207,8 @@ void renderFrame(Renderer& renderer, const GameState& state) {
     for (const auto& guard : state.guards) {
         const auto x = static_cast<int>(guard[0]);
         const auto y = static_cast<int>(guard[1]);
-        renderer.fillRect(x, y, 16, 16, guard[2] > 0 ? Color{215, 75, 65} : Color{90, 90, 65});
+        renderer.fillRect(x, y, 16, 16, guard[2] <= 0 ? Color{90, 90, 65} :
+            guard[4] > 0 ? Color{237, 142, 66} : Color{215, 75, 65});
         if (guard[3] > 0) {
             const char32_t digit = U'0' + static_cast<int>(guard[3]);
             drawPixelText(renderer, std::u32string_view(&digit, 1), x, y - 18, 2, {255, 218, 102});

@@ -34,8 +34,12 @@ int main() {
     if (!game.snapshot().lost) return 7;
     game.restart();
     guardRoom(game);
+    const auto before = game.snapshot();
+    const int vertical = before.y < before.guards.front()[1] ? 1 : -1;
+    ticks(game, static_cast<int>(std::abs(before.y - before.guards.front()[1]) / 2), 0, vertical);
     game.aim(1, 0);
     if (!game.shoot() || !game.shoot() || game.snapshot().guards.front()[2] != 2) return 8;
+    if (game.snapshot().guards.front()[4] != 1) return 11;
     ticks(game, 30);
     if (game.snapshot().guards.front()[2] != 0 || game.snapshot().alarm) return 9;
     ticks(game, 180);

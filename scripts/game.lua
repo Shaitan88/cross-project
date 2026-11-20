@@ -5,12 +5,12 @@ local maps = {
       rooms = {{},{},{guard=100, object="key"},{cover={280,115,65,165}},{object="exit"}} },
     { hint = "THE GATE FEEDS ON TWO CIRCUITS.",
       links = {{1,"L",2,"R"},{2,"L",3,"R"},{1,"R",4,"L"},{4,"R",5,"L"},{1,"U",6,"D","power"}},
-      rooms = {{},{cover={260,90,100,200}},{guard=100,object="switch"},
-               {cover={300,165,40,165}},{guard=280,object="switch"},{object="exit"}} },
+      rooms = {{},{cover={260,90,100,200}},{guard=76,object="switch"},
+               {cover={300,165,40,165}},{guard=322,object="switch"},{object="exit"}} },
     { hint = "TWO GATES STAND BETWEEN YOU AND DAYLIGHT.",
       links = {{1,"R",2,"L"},{1,"D",3,"U"},{3,"R",2,"D"},{2,"R",4,"L","gate1"},
                {2,"U",5,"L","gate1"},{5,"R",4,"U"},{4,"R",6,"L","gate2"},{5,"D",6,"U","gate2"}},
-      rooms = {{},{guard=192,object="gate1"},{cover={270,120,64,165}},
+      rooms = {{},{guard=151,cover={342,105,34,84},object="gate1"},{cover={270,120,64,165}},
                {guard=130,cover={334,95,30,142},object="gate2"},{cover={330,100,70,175}},{object="exit"}} }
 }
 local pendingExit
@@ -23,19 +23,24 @@ local function doorRect(side)
     if side == "U" then return rect(290,0,60,24) end
     return rect(290,376,60,24)
 end
-local function enterLevel(n)
+local function enterLevel(n, ammo)
     pendingExit = false
     level, room, flags, alarm, grace = n, 1, {}, nil, 1.5
     flash, bullets, interacted = 0, {}, false
-    player = {x=64,y=192,dx=1,dy=0,ammo=6}
+    player = {x=64,y=192,dx=1,dy=0,ammo=ammo}
     rooms = {}
     for i, spec in ipairs(maps[n].rooms) do
         local guards = {}
-        if spec.guard then guards[1] = {x=430,y=spec.guard,phase=30,dir=1,hp=2} end
+        if spec.guard then
+            local offset = spec.guard > 240 and 16 or -16
+            guards[1] = {x=430,y=spec.guard,phase=30,dir=1,faceX=1,faceY=0,hp=2,
+                route={{400,spec.guard},{520,spec.guard},{520,spec.guard+offset},
+                       {400,spec.guard+offset}}}
+        end
         rooms[i] = {doors={},guards=guards,cover=spec.cover and {spec.cover} or {},
             kind=spec.object, object=rect(spec.object == "exit" and (n == 3 and 190 or 530) or 552,
                 gateNames[spec.object] and 294 or spec.object == "switch" and (i == 3 and 310 or 42)
-                    or 192,16,16)}
+                    or (n == 3 and spec.object == "exit" and 144 or 192),16,16)}
     end
     for _, link in ipairs(maps[n].links) do
         local state = {open=false, lock=link[5]}
@@ -46,7 +51,7 @@ local function enterLevel(n)
 end
 function restart()
     won, lost = false, false
-    enterLevel(1)
+    enterLevel(1, 6)
 end
 local function locked(door)
     local lock = door.state.lock
@@ -137,6 +142,13 @@ end
 function shoot()
     if won or lost or player.ammo==0 then return false end
     player.ammo,flash=player.ammo-1,0.08
+    for _, guard in ipairs(rooms[room].guards) do
+        local x, y = player.x-guard.x, player.y-guard.y
+        local distance = math.sqrt(x*x+y*y)
+        if guard.hp>0 and distance>0 and distance<=300 then
+            guard.faceX,guard.faceY,guard.listen=x/distance,y/distance,0.75
+        end
+    end
     bullets[#bullets+1]={x=player.x+8,y=player.y+8,dx=player.dx,dy=player.dy,left=320}
     return true
 end
@@ -163,6 +175,26 @@ local function updateBullets(dt)
         if first<=1 or b.left<=0 then table.remove(bullets,i) end
     end
 end
+local function patrol(guard, dt)
+    if guard.listen and guard.listen > 0 then
+        guard.listen=guard.listen-dt
+        return
+    end
+    local distance = (guard.phase+40*dt)%272
+    guard.phase=distance
+    for i, from in ipairs(guard.route) do
+        local to=guard.route[i%#guard.route+1]
+        local dx,dy=to[1]-from[1],to[2]-from[2]
+        local length=math.abs(dx)+math.abs(dy)
+        if distance<length then
+            guard.x,guard.y=from[1]+dx/length*distance,from[2]+dy/length*distance
+            if dx~=0 then guard.dir=dx/length end
+            guard.faceX,guard.faceY=guard.dir,0
+            return
+        end
+        distance=distance-length
+    end
+end
 local function tick(dt, dx, dy)
     if won or lost then return end
     grace,flash=math.max(0,grace-dt),math.max(0,flash-dt)
@@ -175,11 +207,11 @@ local function tick(dt, dx, dy)
     for i,area in ipairs(rooms) do
         for _,g in ipairs(area.guards) do
             if g.hp>0 then
-                g.phase=(g.phase+40*dt)%240
-                g.dir=g.phase<120 and 1 or -1
-                g.x=400+math.min(g.phase,240-g.phase)
+                patrol(g,dt)
                 local x,y=player.x-g.x,player.y-g.y
-                g.sees=grace<=1e-9 and i==room and x*g.dir>=0 and math.abs(y)<=math.abs(x)
+                local forward=x*g.faceX+y*g.faceY
+                local sideways=x*g.faceY-y*g.faceX
+                g.sees=grace<=1e-9 and i==room and forward>=math.abs(sideways)
                     and x*x+y*y<=90000
                 if g.sees then
                     for _,r in ipairs(area.cover) do
@@ -201,7 +233,7 @@ local function tick(dt, dx, dy)
     if pendingExit then
         pendingExit=false
         if lost then return end
-        if level==#maps then won=true else enterLevel(level+1) end
+        if level==#maps then won=true else enterLevel(level+1, player.ammo) end
     end
 end
 function update(dt, horizontal, vertical)
@@ -226,7 +258,8 @@ function snapshot()
         doors[#doors][5]=locked(door) and 2 or door.state.open and 1 or 0
     end
     for _,guard in ipairs(a.guards) do
-        guards[#guards+1]={guard.x,guard.y,guard.hp,not alarm and seconds(guard.timer) or 0}
+        guards[#guards+1]={guard.x,guard.y,guard.hp,not alarm and seconds(guard.timer) or 0,
+            guard.listen and guard.listen>0 and 1 or 0}
     end
     local objects={}
     if a.kind and not (a.kind=="key" and flags.key) then

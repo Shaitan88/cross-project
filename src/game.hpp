@@ -46,8 +46,8 @@ struct GameState {
     bool exitOnLeft;
     std::string objective;
     bool interactSucceeded;
-    std::vector<std::array<double, 5>> doors, objects;
-    std::vector<std::array<double, 4>> guards, covers;
+    std::vector<std::array<double, 5>> doors, objects, guards;
+    std::vector<std::array<double, 4>> covers;
     int alarmSeconds;
 };
 
