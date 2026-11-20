@@ -46,3 +46,60 @@ python3 -m http.server 8080 --bind 127.0.0.1 --directory dist/web
 ```
 
 CTest покрывает свойства движения, переходы и блокировки, боезапас, столкновения пуль, сроки тревоги, цикл приложения и SDL smoke-тест. Тест кампании проходит три миссии с шагом 1/60 секунды в двух вариантах маршрута.
+
+## Соответствие методичке
+
+| Требование | Реализация в проекте | Проверка или артефакт |
+|---|---|---|
+| Низкоуровневое ядро на системном языке | C++17 | `src/game.cpp`, `src/app.cpp`, `src/platform_sdl.cpp` |
+| Платформонезависимая игровая логика | Lua 5.4, встроенный в C++ через Lua C API | `scripts/game.lua`, `src/game.cpp` |
+| Две разрядности процессора | Linux x86-64 и Windows x86 PE32 | `file build/castle_escape dist/windows-x86/castle_escape.exe` |
+| Три категории ОС | Linux, Windows, WebAssembly | `.github/workflows/`, `scripts/build_windows_x86.sh`, `scripts/build_web.sh` |
+| Графика и библиотека уровня SDL | Ретро-2D-отрисовка через SDL2 | `src/render.cpp`, `src/platform_sdl.cpp` |
+| Ввод | Клавиатура: WASD, стрелки, E, Space, P, R, Esc | `src/platform_sdl.cpp`, `readme.md` |
+| Запрещённые игровые фреймворки не используются | Нет Unity, Godot или игрового движка | CMake-зависимости содержат SDL2 и Lua |
+| Модульное тестирование | Движение, границы, ввод, состояние игры и Lua-снимок | `tests/game_logic_test.cpp` |
+| Интеграционное тестирование | Комнаты, двери, миссии, охрана, приложение и SDL smoke | `tests/guards_rooms_test.cpp`, `tests/objectives_test.cpp`, `tests/application_test.cpp` |
+| Продвинутый метод тестирования | Тестирование свойств на 10 000 воспроизводимых случайных перемещений | `tests/game_logic_test.cpp` |
+| Система сборки | CMake и CTest | `CMakeLists.txt` |
+| Публичный Git-репозиторий | GitHub `Shaitan88/cross-project` с историей коммитов | GitHub repository |
+| Документация | Этот README и инструкция Windows x86 | `readme.md`, `docs/windows-x86.md` |
+
+## Тестирование
+
+Модульные тесты проверяют отдельные игровые инварианты. Запускаются так:
+
+```sh
+cmake -S . -B build
+cmake --build build --parallel
+./build/game_logic_test
+```
+
+Проверяются покой игрока, скорость фиксированного шага, нормализация диагонали, столкновения со стенами, неверное время, границы комнат и Lua-снимок состояния.
+
+Интеграционные тесты проверяют взаимодействие подсистем. Полный запуск:
+
+```sh
+ctest --test-dir build --output-on-failure
+```
+
+В него входят проверки дверей и комнат, охраны и укрытий, патронов и предупреждений, трёх миссий, перезапуска, игрового цикла и создания SDL-окна. Отдельный smoke-тест можно запустить так:
+
+```sh
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy ./build/castle_escape --smoke-test
+```
+
+Продвинутое тестирование выполнено как property-based тестирование. `game_logic_test` использует фиксированный seed `0xCA57`, генерирует 10 000 случайных направлений и длительностей и после каждого шага проверяет инварианты положения игрока, конечность координат и соблюдение границ. Это делает сбои воспроизводимыми.
+
+Windows x86 запускает тот же набор через Wine:
+
+```sh
+./scripts/build_windows_x86.sh
+```
+
+WebAssembly собирается отдельно и проверяется загрузкой всех HTML, JavaScript и WASM-ресурсов через локальный HTTP-сервер:
+
+```sh
+./scripts/build_web.sh
+python3 -m http.server 8080 --bind 127.0.0.1 --directory dist/web
+```
